@@ -19,6 +19,7 @@ export default class Boards extends Model<InferAttributes<Boards>, InferAttribut
     @Column({
         type: DataType.TEXT,
         allowNull: false,
+        defaultValue: null,
         field: "NAME",
     })
     declare name: string;

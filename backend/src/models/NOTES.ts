@@ -1,5 +1,5 @@
 import { CreationOptional, InferAttributes } from "sequelize";
-import { BelongsTo, Column, DataType, HasOne, Model, Table } from "sequelize-typescript";
+import { BelongsTo, Column, DataType, Model, Table } from "sequelize-typescript";
 import Boards from "./BOARDS";
 
 @Table ({
@@ -23,29 +23,31 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
     })
     declare content: string;
     @Column({
-        type: DataType.INTEGER,
+        type: DataType.DECIMAL(5, 2),
         allowNull: false,
         field: "X",
     })
-    declare x: string;
+    declare x: number;
     @Column({
-        type: DataType.INTEGER,
+        type: DataType.DECIMAL(5, 2),
         allowNull: false,
         field: "Y",
     })
-    declare y: string;
+    declare y: number;
     @Column({
-        type: DataType.INTEGER,
+        type: DataType.DECIMAL(5, 2),
         allowNull: false,
-        field: "width",
+        field: "WIDTH",
+        defaultValue: 192,
     })
-    declare width: string;
+    declare width: number;
     @Column({
-        type: DataType.INTEGER,
+        type: DataType.DECIMAL(5, 2),
         allowNull: false,
-        field: "height",
+        field: "HEIGHT",
+        defaultValue: 96,
     })
-    declare height: string;
+    declare height: number;
 
     @Column({
         type: DataType.UUID,
