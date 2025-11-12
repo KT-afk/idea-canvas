@@ -1,11 +1,18 @@
 import { CreationAttributes } from "sequelize";
 import Notes from "../models/NOTES";
-import { UUID } from "crypto";
 
 export const insertNote = async (note: CreationAttributes<Notes>) => {
   try {
-    await Notes.create(note);
-    return true;
+    const { content, x, y, width, height, boardId } = note;
+    const newNote = await Notes.create({
+      content,
+      x,
+      y,
+      width: width || 192,
+      height: height || 96,
+      boardId: boardId || null,
+    } as Notes);
+    return newNote;
   } catch (error) {
     console.error("❌ Error inserting a note:", error);
     throw error;
@@ -30,8 +37,8 @@ export const getAllNotesByBoardId = async (boardId: string) => {
   }
 };
 export const updateNote = async (
-    notesId: string,
-    updates: Partial<CreationAttributes<Notes>>,
+  notesId: string,
+  updates: Partial<CreationAttributes<Notes>>
 ) => {
   try {
     const [updatedCount, updatedRows] = await Notes.update(
@@ -48,7 +55,8 @@ export const updateNote = async (
     if (updatedRows === undefined || updatedCount === 0) {
       throw new Error("Note not found or no changes made.");
     }
-    return updatedRows[0];
+    console.log("Updated note:", updatedRows[0]);
+    return updatedRows[0].toJSON();
   } catch (error) {
     console.error("❌ Error updating a note:", error);
     throw error;

@@ -1,9 +1,10 @@
-import { connectDB, sequelize } from "./config/db";
+import cors from "cors";
 import express from "express";
+import { connectDB, sequelize } from "./config/db";
 import { router } from "./routes/notes-route";
 
 const app = express();
-
+app.use(cors());
 app.use(express.json());
 app.use("/api", router);
 const port = process.env.PORT || 3000;
