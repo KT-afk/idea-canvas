@@ -4,7 +4,15 @@ import type { Note } from "./types/types";
 export async function fetchNotes() {
   const res = await fetch("/api/notes");
   if (!res.ok) throw new Error("Failed to fetch notes");
-  return res.json();
+  const data = await res.json();
+  return data.result.map((note: Note) => ({
+      ...note,
+      x: Number(note.x),
+      y: Number(note.y),
+      width: Number(note.width),
+      height: Number(note.height),
+    }
+));
 }
 
 // ✅ Fetch notes by board
