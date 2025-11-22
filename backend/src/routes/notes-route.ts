@@ -11,10 +11,11 @@ import {
 export const router = express.Router();
 
 //Get all notes
-router.get("/get/notes", async (req, res) => {
+router.get("/notes", async (req, res) => {
   try {
     const result = await getAllNotes();
-    res.status(200).json({ success: result });
+    console.log("Success in fetching all notes!");
+    res.status(200).json({ result});
   } catch (error) {
     console.error("❌ Error getting all notes:", error);
     res.status(500).json({ success: false, error: "Failed to delete note." });
