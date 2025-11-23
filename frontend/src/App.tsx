@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
-import { useRef } from "react";
+import { AnimatePresence } from "framer-motion";
+import { useState } from "react";
 import { createNote, deleteNote, fetchNotes, updateNote } from "./api";
 import { Button } from "./components/Button";
 import { EmptyState } from "./components/EmptyState";
@@ -25,10 +25,12 @@ function App() {
     },
   });
   const handleAddNote = async () => {
-    const rect = boardRef.current?.getBoundingClientRect();
+    //const rect = boardRef.current?.getBoundingClientRect();
     const offset = (notes.length % 5) * 25;
-    const x = (rect?.width ?? window.innerWidth) / 2 + offset - 96;
-    const y = (rect?.height ?? window.innerHeight) / 2 + offset - 48;
+    // const x = (rect?.width ?? window.innerWidth) / 2 + offset - 96;
+    // const y = (rect?.height ?? window.innerHeight) / 2 + offset - 48;
+    const x = window.innerWidth / 2 + offset - 96;
+    const y = window.innerHeight / 2 + offset - 48;
     addNoteMutation.mutate({ content: "New Note", x, y });
   };
   const editNoteMutation = useMutation({
@@ -65,7 +67,8 @@ function App() {
   const handleEditNotePosition = async (id: string, x: number, y: number) => {
     editNoteMutation.mutateAsync({ id, payload: { x, y } });
   };
-  const boardRef = useRef<HTMLDivElement>(null);
+  const [boardRef, setBoardRef] = useState<HTMLDivElement | null>(null);
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
@@ -81,38 +84,22 @@ function App() {
     );
   } else {
     return (
-      <div
-        ref={boardRef}
-        className="fixed h-screen inset-0 w-screen bg-black overflow-hidden"
-        style={{ position: "relative" }}
-      >
+      <div ref={setBoardRef} className="fixed inset-0 overflow-hidden bg-black">
         <Button onClick={handleAddNote}>+</Button>
-
         <AnimatePresence>
-          {notes.map((note: Note) => {
-            console.log("RENDER NOTE:", note);
-
+          {boardRef && notes.map((note: Note) => {
             return (
-              <motion.div
+              <NoteCard
+                id={note.id}
                 key={note.id}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.2 }}
-              >
-                <NoteCard
-                  id={note.id}
-                  key={note.id}
-                  x={note.x ?? 0}
-                  y={note.y ?? 0}
-                  content={note.content}
-                  onEdit={handleEditNoteContent}
-                  onDelete={handleDeleteNote}
-                  onDragEndSave={handleEditNotePosition}
-                  dragRef={boardRef}
-                />
-              </motion.div>
+                x={note.x ?? 0}
+                y={note.y ?? 0}
+                content={note.content}
+                onEdit={handleEditNoteContent}
+                onDelete={handleDeleteNote}
+                onDragEndSave={handleEditNotePosition}
+                dragRef={boardRef}
+              />
             );
           })}
         </AnimatePresence>
