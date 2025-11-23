@@ -60,4 +60,12 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
         foreignKey: "boardId",
     })
     declare board?: CreationOptional<Boards>;
+
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+        field: "ZINDEX",
+    })
+    declare zIndex: number;
 }
