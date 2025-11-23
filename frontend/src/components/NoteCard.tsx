@@ -1,5 +1,5 @@
 import { motion, useMotionValue } from "framer-motion";
-import React, { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface NoteCardProps {
   id: string;
@@ -9,7 +9,7 @@ interface NoteCardProps {
   onEdit: (id: string, newContent: string) => void;
   onDelete: (id: string) => void;
   onDragEndSave: (id: string, x: number, y: number) => void;
-  dragRef: React.RefObject<HTMLDivElement | null>;
+  dragRef: HTMLElement;
 }
 export function NoteCard({
   id,
@@ -24,6 +24,8 @@ export function NoteCard({
   const [editableText, setEditableText] = useState(content);
   const dx = useMotionValue(0);
   const dy = useMotionValue(0);
+  const noteRef = useRef<HTMLDivElement>(null);
+  
   useEffect(() => setEditableText(content), [content]);
 
   return (
@@ -36,23 +38,22 @@ export function NoteCard({
         y: dy,
       }}
       drag
-      dragMomentum={false}
-      onDragEnd={(_, info) => {
-        const board = dragRef.current?.getBoundingClientRect();
-        if (!board) return;
+      dragConstraints={{ current: dragRef }}
+      onDragEnd={() => {
+        const board = dragRef.getBoundingClientRect();
+        const rect = noteRef.current?.getBoundingClientRect();
+        if (!rect) return;
 
-        const NOTE_W = 192;
-        const NOTE_H = 96;
+        const NOTE_W = rect.width;
+        const NOTE_H = rect.height;
 
-        // Motion offset = true movement in parent coordinates
-        let nx = x + info.offset.x;
-        let ny = y + info.offset.y;
+        // get note's position relative to board
+        let nx = rect.left - board.left;
+        let ny = rect.top - board.top;
 
         // clamp
         nx = Math.max(0, Math.min(nx, board.width - NOTE_W));
         ny = Math.max(0, Math.min(ny, board.height - NOTE_H));
-        dx.set(0);
-        dy.set(0);
 
         onDragEndSave(id, nx, ny);
       }}

@@ -7,7 +7,7 @@ const defaultConfig: SequelizeOptions = {
     port: Number(ENV.DB_PORT),
     username: ENV.DB_USERNAME,
     password: ENV.DB_PASSWORD,
-    database: ENV.DB_DATABASE,
+    database: ENV.DB_NAME,
     dialect: "postgres",
     logging: false,
     models: [__dirname + "/../models"],
