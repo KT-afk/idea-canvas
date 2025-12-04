@@ -6,8 +6,10 @@ interface NoteCardProps {
   content: string;
   x: number;
   y: number;
+  zIndex: number;
   onEdit: (id: string, newContent: string) => void;
   onDelete: (id: string) => void;
+  onBringToFront: (id: string) => void;
   onDragEndSave: (id: string, x: number, y: number) => void;
   dragRef: HTMLElement;
 }
@@ -16,8 +18,10 @@ export function NoteCard({
   content,
   x,
   y,
+  zIndex,
   onEdit,
   onDelete,
+  onBringToFront,
   onDragEndSave,
   dragRef,
 }: Readonly<NoteCardProps>) {
@@ -36,9 +40,12 @@ export function NoteCard({
         top: y,
         x: dx,
         y: dy,
+        zIndex: zIndex ?? 0,
       }}
       drag
       dragConstraints={{ current: dragRef }}
+      onDragStart={() => onBringToFront(id)}
+      onMouseDown={()=> onBringToFront(id)}
       onDragEnd={() => {
         const board = dragRef.getBoundingClientRect();
         const rect = noteRef.current?.getBoundingClientRect();
