@@ -33,8 +33,6 @@ export function NoteCard({
   // Use motion values for smooth dragging without re-renders
   const motionX = useMotionValue(x);
   const motionY = useMotionValue(y);
-  
-  // Sync motion values with props only when not dragging
   useEffect(() => {
     if (!isDragging) {
       motionX.set(x);
