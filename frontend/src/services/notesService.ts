@@ -1,4 +1,4 @@
-import type { Note } from "./types/types";
+import type { Note } from "../types/types";
 
 // ✅ Fetch all notes
 export async function fetchNotes() {
@@ -35,7 +35,7 @@ export async function createNote(note: unknown) {
 }
 
 // ✅ Update note content or position
-export async function updateNote(id: string, payload: Partial<Pick<Note, "content" | "x" | "y" | "width" | "height">>): Promise<Note> {
+export async function updateNote(id: string, payload: Partial<Pick<Note, "content" | "x" | "y" | "width" | "height" >>): Promise<Note> {
   const res = await fetch(`/api/notes/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
