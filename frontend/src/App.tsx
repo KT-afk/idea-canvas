@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createNote, deleteNote, fetchNotes, updateNote } from "./api";
 import { Button } from "./components/Button";
 import { EmptyState } from "./components/EmptyState";
@@ -11,7 +11,7 @@ function App() {
   const MAX_Z_INDEX = 1000;
   const queryClient = useQueryClient();
   const [order, setOrder] = useState<Record<string, number>>({});
-  const [boardRef, setBoardRef] = useState<HTMLDivElement | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
   const {
     data: notes = [],
     isLoading,
@@ -33,18 +33,18 @@ function App() {
       if (currentZIndices.length === 0) return prev;
       const currentMaxZ = Math.max(...currentZIndices);
       if (prev[id] === currentMaxZ) return prev;
-      
-      const newOrder = {...prev};
-      newOrder[id] = currentMaxZ+1;
 
-      if(currentMaxZ > MAX_Z_INDEX){
+      const newOrder = { ...prev };
+      newOrder[id] = currentMaxZ + 1;
+
+      if (currentMaxZ > MAX_Z_INDEX) {
         const sortedNotes = Object.entries(newOrder)
           .sort((a, b) => a[1] - b[1])
-          .map(([id, index]) => [id, index+1]);
+          .map(([id, index]) => [id, index + 1]);
         return Object.fromEntries(sortedNotes);
       }
       return newOrder;
-     });
+    });
   };
   const handleAddNote = async () => {
     const offset = (notes.length % 5) * 25;
@@ -98,6 +98,29 @@ function App() {
   const handleEditNoteContent = async (id: string, newContent: string) => {
     editNoteMutation.mutateAsync({ id, payload: { content: newContent } });
   };
+
+  // Separate mutation for position updates
+  const updatePositionMutation = useMutation({
+    mutationFn: ({ id, x, y }: { id: string; x: number; y: number }) =>
+      updateNote(id, { x, y }),
+    onMutate: async ({ id, x, y }) => {
+      await queryClient.cancelQueries({ queryKey: ["notes"] });
+      const previousNotes = queryClient.getQueryData<Note[]>(["notes"]);
+
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) => (note.id === id ? { ...note, x, y } : note))
+      );
+
+      return { previousNotes };
+    },
+    onError: (_err, _var, context) => {
+      if (context?.previousNotes) {
+        queryClient.setQueryData(["notes"], context.previousNotes);
+      }
+    },
+    // Remove or comment out onSettled to prevent refetch
+    // The optimistic update is enough
+  });
   const deleteNodeMutation = useMutation({
     mutationFn: deleteNote,
     onSuccess: () => {
@@ -107,20 +130,20 @@ function App() {
   const handleDeleteNote = async (id: string) => {
     deleteNodeMutation.mutate(id);
   };
-  const handleEditNotePosition = async (id: string, x: number, y: number) => {
-    editNoteMutation.mutateAsync({ id, payload: { x, y } });
+  const handleEditNotePosition = (id: string, x: number, y: number) => {
+    updatePositionMutation.mutate({ id, x, y });
   };
-  
+
   // Move all hooks to the top, before any conditional returns
   useEffect(() => {
     if (notes.length === 0) return;
 
-    setOrder(prev => {
-      const newOrder = {...prev};
+    setOrder((prev) => {
+      const newOrder = { ...prev };
       let maxZIndex = 0;
 
       Object.entries(prev).forEach(([id, zIndex]) => {
-        if(notes.some((note: Note) => note.id === id)){
+        if (notes.some((note: Note) => note.id === id)) {
           newOrder[id] = zIndex;
           maxZIndex = Math.max(maxZIndex, zIndex);
         }
@@ -130,8 +153,7 @@ function App() {
           newOrder[note.id] = maxZIndex;
           maxZIndex++;
         }
-
-      })
+      });
       return newOrder;
     });
   }, [notes]);
@@ -154,7 +176,7 @@ function App() {
     );
   } else {
     return (
-      <div ref={setBoardRef} className="fixed inset-0 overflow-hidden bg-black">
+      <div ref={boardRef} className="fixed inset-0 overflow-hidden bg-black">
         <Button onClick={handleAddNote}>+</Button>
         <AnimatePresence>
           {boardRef &&
@@ -168,7 +190,7 @@ function App() {
                   content={note.content}
                   onEdit={handleEditNoteContent}
                   onDelete={handleDeleteNote}
-                  zIndex={order[note.id] ?? 0}  
+                  zIndex={order[note.id] ?? 0}
                   onBringToFront={() => bringToFront(note.id)}
                   onDragEndSave={handleEditNotePosition}
                   dragRef={boardRef}
