@@ -6,56 +6,87 @@ interface NoteCardProps {
   content: string;
   x: number;
   y: number;
+  zIndex: number;
   onEdit: (id: string, newContent: string) => void;
   onDelete: (id: string) => void;
+  onBringToFront: (id: string) => void;
   onDragEndSave: (id: string, x: number, y: number) => void;
-  dragRef: HTMLElement;
+  dragRef: React.RefObject<HTMLDivElement | null>;
 }
+
 export function NoteCard({
   id,
   content,
   x,
   y,
-  onEdit,
+  zIndex,
+  onEdit, 
   onDelete,
+  onBringToFront,
   onDragEndSave,
   dragRef,
 }: Readonly<NoteCardProps>) {
   const [editableText, setEditableText] = useState(content);
-  const dx = useMotionValue(0);
-  const dy = useMotionValue(0);
+  const [isDragging, setIsDragging] = useState(false);
   const noteRef = useRef<HTMLDivElement>(null);
   
-  useEffect(() => setEditableText(content), [content]);
+  // Use motion values for smooth dragging without re-renders
+  const motionX = useMotionValue(x);
+  const motionY = useMotionValue(y);
+  
+  // Sync motion values with props only when not dragging
+  useEffect(() => {
+    if (!isDragging) {
+      motionX.set(x);
+      motionY.set(y);
+    }
+  }, [x, y, isDragging, motionX, motionY]);
+  
+  useEffect(() => {
+    setEditableText(content);
+  }, [content]);
 
   return (
     <motion.div
+      ref={noteRef}
       style={{
         position: "absolute",
-        left: x,
-        top: y,
-        x: dx,
-        y: dy,
+        x: motionX,
+        y: motionY,
+        zIndex: zIndex ?? 0,
       }}
       drag
-      dragConstraints={{ current: dragRef }}
+      dragMomentum={false}
+      dragElastic={0.3}
+      dragConstraints={dragRef}
+      dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
+      whileDrag={{ scale: 1.05, rotate: 2 }}
+      onDragStart={() => {
+        setIsDragging(true);
+        onBringToFront(id);
+      }}
       onDragEnd={() => {
-        const board = dragRef.getBoundingClientRect();
-        const rect = noteRef.current?.getBoundingClientRect();
-        if (!rect) return;
+        if (!dragRef.current || !noteRef.current) {
+          setIsDragging(false);
+          return;
+        }
 
-        const NOTE_W = rect.width;
-        const NOTE_H = rect.height;
+        const container = dragRef.current.getBoundingClientRect();
+        const noteRect = noteRef.current.getBoundingClientRect();
 
-        // get note's position relative to board
-        let nx = rect.left - board.left;
-        let ny = rect.top - board.top;
+        // Get final position relative to container
+        const finalX = noteRect.left - container.left;
+        const finalY = noteRect.top - container.top;
 
-        // clamp
-        nx = Math.max(0, Math.min(nx, board.width - NOTE_W));
-        ny = Math.max(0, Math.min(ny, board.height - NOTE_H));
+        // Update motion values immediately to prevent snap-back
+        motionX.set(finalX);
+        motionY.set(finalY);
 
-        onDragEndSave(id, nx, ny);
+        // Save to backend
+        onDragEndSave(id, Math.round(finalX), Math.round(finalY));
+        
+        // Allow props to take over again
+        setIsDragging(false);
       }}
       className="relative bg-yellow-200 p-4 rounded-lg shadow-lg w-48 cursor-grab active:cursor-grabbing"
     >
