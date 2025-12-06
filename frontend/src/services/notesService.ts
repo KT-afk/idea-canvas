@@ -1,4 +1,4 @@
-import type { Note } from "./types/types";
+import type { Note } from "../types/types";
 
 // ✅ Fetch all notes
 export async function fetchNotes() {
