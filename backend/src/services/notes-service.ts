@@ -3,7 +3,7 @@ import Notes from "../models/NOTES";
 
 export const insertNote = async (note: CreationAttributes<Notes>) => {
   try {
-    const { content, x, y, width, height, boardId } = note;
+    const { content, x, y, width, height, boardId, color } = note;
     const newNote = await Notes.create({
       content,
       x,
@@ -11,6 +11,7 @@ export const insertNote = async (note: CreationAttributes<Notes>) => {
       width: width || 192,
       height: height || 96,
       boardId: boardId || null,
+      color: color || "yellow",
     } as Notes);
     return newNote;
   } catch (error) {
@@ -49,6 +50,7 @@ export const updateNote = async (
         y: updates.y,
         width: updates.width,
         height: updates.height,
+        color: updates.color,
       },
       { where: { id: notesId }, returning: true }
     );
