@@ -68,4 +68,12 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
         field: "ZINDEX",
     })
     declare zIndex: number;
+
+    @Column({
+        type: DataType.STRING,
+        allowNull: false,
+        defaultValue: 0,
+        field: "COLOR",
+    })
+    declare color: string;
 }
