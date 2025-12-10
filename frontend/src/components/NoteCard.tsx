@@ -1,12 +1,18 @@
+import { getColorClass } from "@/utilities/utils";
 import { motion, useMotionValue } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { PopoverDemo } from "./Popover";
+
+
 
 interface NoteCardProps {
   id: string;
   content: string;
   x: number;
   y: number;
+  color: string;
   zIndex: number;
+  onColorChange: (color: string) => void;
   onEdit: (id: string, newContent: string) => void;
   onDelete: (id: string) => void;
   onBringToFront: (id: string) => void;
@@ -19,8 +25,10 @@ export function NoteCard({
   content,
   x,
   y,
+  color,
   zIndex,
-  onEdit, 
+  onColorChange,
+  onEdit,
   onDelete,
   onBringToFront,
   onDragEndSave,
@@ -52,6 +60,7 @@ export function NoteCard({
         x: motionX,
         y: motionY,
         zIndex: zIndex ?? 0,
+        backgroundColor: getColorClass(color),
       }}
       drag
       dragMomentum={false}
@@ -82,12 +91,13 @@ export function NoteCard({
 
         // Save to backend
         onDragEndSave(id, Math.round(finalX), Math.round(finalY));
-        
+
         // Allow props to take over again
         setIsDragging(false);
       }}
-      className="relative bg-yellow-200 p-4 rounded-lg shadow-lg w-48 cursor-grab active:cursor-grabbing"
+      className="relative p-4 rounded-lg shadow-lg w-48 cursor-grab active:cursor-grabbing"
     >
+      <PopoverDemo onColorChange={onColorChange}/>
       <button
         onClick={() => onDelete(id)}
         className="absolute top-2 right-2 text-gray-600 hover:text-red-600"
