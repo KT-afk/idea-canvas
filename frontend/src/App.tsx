@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
 import { useRef } from "react";
-import { fetchNotes } from "./services/notesService";
 import { Button } from "./components/Button";
 import { EmptyState } from "./components/EmptyState";
 import { NoteCard } from "./components/NoteCard";
-import type { Note } from "./types/types";
 import { useNoteMutations } from "./hooks/useNoteMutations";
 import { useZIndexManager } from "./hooks/useZIndexManager";
+import { fetchNotes } from "./services/notesService";
+import type { Note } from "./types/types";
 
 function App() {
   const boardRef = useRef<HTMLDivElement>(null);
@@ -20,7 +20,7 @@ function App() {
     queryFn: fetchNotes,
   });
 
-  const { addNote, editNote, updatePosition, deleteNote } = useNoteMutations();
+  const { addNote, editNote, updatePosition, updateColor, deleteNote } = useNoteMutations();
   const { order, bringToFront } = useZIndexManager(notes);
 
   const handleAddNote = () => {
@@ -59,10 +59,12 @@ function App() {
                   key={note.id}
                   x={note.x ?? 0}
                   y={note.y ?? 0}
+                  color={note.color ?? "yellow"}
                   content={note.content}
                   onEdit={(id, newContent) =>
                     editNote.mutateAsync({ id, payload: { content: newContent } })
                   }
+                  onColorChange={(color) => updateColor.mutate({id:note.id, color})}
                   onDelete={(id) => deleteNote.mutate(id)}
                   zIndex={order[note.id] ?? 0}
                   onBringToFront={() => bringToFront(note.id)}
