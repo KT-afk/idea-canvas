@@ -24,6 +24,7 @@ export function useNoteMutations() {
         y: number;
         width: number;
         height: number;
+        color: string;
       }>;
     }) => updateNote(id, payload),
     onMutate: async ({ id, payload }) => {
@@ -74,7 +75,26 @@ export function useNoteMutations() {
     },
     
   });
+  const updateColorMutation = useMutation({
+    mutationFn: ({ id, color }: { id: string; color: string }) =>
+      updateNote(id, {color}),
+    onMutate: async ({ id, color }) => {
+      await queryClient.cancelQueries({ queryKey: ["notes"] });
+      const previousNotes = queryClient.getQueryData<Note[]>(["notes"]);
 
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) => (note.id === id ? { ...note, color } : note))
+      );
+
+      return { previousNotes };
+    },
+    onError: (_err, _var, context) => {
+      if (context?.previousNotes) {
+        queryClient.setQueryData(["notes"], context.previousNotes);
+      }
+    },
+    
+  });
   const deleteNoteMutation = useMutation({
     mutationFn: deleteNote,
     onSuccess: () => {
@@ -86,6 +106,7 @@ export function useNoteMutations() {
     addNote: addNoteMutation,
     editNote: editNoteMutation,
     updatePosition: updatePositionMutation,
+    updateColor: updateColorMutation,
     deleteNote: deleteNoteMutation,
   };
 }
