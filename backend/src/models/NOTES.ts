@@ -72,7 +72,7 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
     @Column({
         type: DataType.STRING,
         allowNull: false,
-        defaultValue: 0,
+        defaultValue: "yellow",
         field: "COLOR",
     })
     declare color: string;
