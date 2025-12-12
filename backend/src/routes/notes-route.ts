@@ -25,8 +25,8 @@ router.get("/notes", async (req, res) => {
 //Create a note
 router.post("/notes", async (req, res) => {
   try {
-    const { content, x, y, width, height, color } = req.body;
-    const Note = { content, x, y, width, height, color };
+    const { content, x, y, width, height, color, textColor } = req.body;
+    const Note = { content, x, y, width, height, color, textColor };
     const result = await insertNote(Note as Notes);
     res.status(200).json({ success: true, note: result });
   } catch (error) {
@@ -39,8 +39,8 @@ router.post("/notes", async (req, res) => {
 router.put("/notes/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    const { content, x, y, width, height, color } = req.body;
-    const result = await updateNote(id, { content, x, y, width, height, color });
+    const { content, x, y, width, height, color, textColor } = req.body;
+    const result = await updateNote(id, { content, x, y, width, height, color, textColor });
     res.status(200).json(result);
   } catch (error) {
     console.error("❌ Error updating a note:", error);
