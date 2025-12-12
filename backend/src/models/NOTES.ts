@@ -23,13 +23,13 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
     })
     declare content: string;
     @Column({
-        type: DataType.DECIMAL(5, 2),
+        type: DataType.DECIMAL(10, 2),
         allowNull: false,
         field: "X",
     })
     declare x: number;
     @Column({
-        type: DataType.DECIMAL(5, 2),
+        type: DataType.DECIMAL(10, 2),
         allowNull: false,
         field: "Y",
     })
@@ -76,4 +76,12 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
         field: "COLOR",
     })
     declare color: string;
+
+     @Column({
+        type: DataType.STRING,
+        allowNull: false,
+        defaultValue: "black",
+        field: "TEXTCOLOR",
+    })
+    declare textColor: string;
 }
