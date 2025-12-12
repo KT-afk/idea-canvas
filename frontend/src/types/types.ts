@@ -6,6 +6,7 @@ export type Note = {
   width: number;
   height: number;
   color: string;
+  textColor: string;
   boardId?: string;
   createdAt?: string;
   updatedAt?: string;
