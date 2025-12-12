@@ -1,5 +1,5 @@
 import { getColorClass } from "@/utilities/utils";
-import { motion, useMotionValue } from "framer-motion";
+import { motion, useDragControls, useMotionValue } from "framer-motion";
 import { PaintBucket, Type, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ColorPickerPopover } from "./Popover";
@@ -41,6 +41,7 @@ export function NoteCard({
   const [isDragging, setIsDragging] = useState(false);
   const noteRef = useRef<HTMLDivElement>(null);
   const lastSavedPos = useRef({ x, y });
+  const dragControls = useDragControls();
 
   // Use motion values for smooth dragging without re-renders
   const motionX = useMotionValue(x);
@@ -76,6 +77,8 @@ export function NoteCard({
         color: getColorClass(textColor),
       }}
       drag
+      dragControls={dragControls}
+      dragListener={false}
       dragMomentum={false}
       dragElastic={0}
       dragConstraints={dragRef}
@@ -99,15 +102,20 @@ export function NoteCard({
         // Allow props to take over again
         setIsDragging(false);
       }}
-      className="relative p-4 rounded-xl w-48 cursor-grab active:cursor-grabbing shadow-[0_3px_10px_rgb(0,0,0,0.2)] hover:shadow-[0_8px_20px_rgb(0,0,0,0.3)] transition-shadow duration-200"
+      className="relative p-4 rounded-xl w-48 shadow-[0_3px_10px_rgb(0,0,0,0.2)] hover:shadow-[0_8px_20px_rgb(0,0,0,0.3)] transition-shadow duration-200"
     >
-      <div className="absolute top-2.5 left-2.5 flex gap-1.5 z-10" onPointerDown={(e) => e.stopPropagation()}>
+      {/* Invisible drag handle area - only top section is draggable */}
+      <div
+        className="absolute top-0 left-0 right-0 h-10 cursor-grab active:cursor-grabbing z-0"
+        onPointerDown={(e) => dragControls.start(e)}
+      />
+
+      <div className="absolute top-2.5 left-2.5 flex gap-1.5 z-10">
         <ColorPickerPopover icon={PaintBucket} onColorChange={onColorChange}/>
         <ColorPickerPopover icon={Type} onColorChange={onTextColorChange} />
       </div>
       <button
         onClick={() => onDelete(id)}
-        onPointerDown={(e) => e.stopPropagation()}
         className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center hover:text-red-600 transition-colors z-10"
       >
         <X className="w-5 h-5" />
@@ -121,7 +129,6 @@ export function NoteCard({
         value={editableText}
         onChange={(e) => setEditableText(e.target.value)}
         onBlur={() => onEdit(id, editableText)}
-        onPointerDown= {(e) => e.stopPropagation()}
         placeholder="Type something..."
       />
     </motion.div>
