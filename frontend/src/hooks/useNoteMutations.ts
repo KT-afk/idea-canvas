@@ -25,6 +25,7 @@ export function useNoteMutations() {
         width: number;
         height: number;
         color: string;
+        textColor: string;
       }>;
     }) => updateNote(id, payload),
     onMutate: async ({ id, payload }) => {
@@ -73,7 +74,13 @@ export function useNoteMutations() {
         queryClient.setQueryData(["notes"], context.previousNotes);
       }
     },
-    
+    onSettled: () => {
+      // Don't refetch immediately.
+      // Wait a tiny tick so all overlapping updates finish.
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["notes"] });
+      }, 50);
+    },
   });
   const updateColorMutation = useMutation({
     mutationFn: ({ id, color }: { id: string; color: string }) =>
@@ -84,6 +91,26 @@ export function useNoteMutations() {
 
       queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
         oldNotes.map((note) => (note.id === id ? { ...note, color } : note))
+      );
+
+      return { previousNotes };
+    },
+    onError: (_err, _var, context) => {
+      if (context?.previousNotes) {
+        queryClient.setQueryData(["notes"], context.previousNotes);
+      }
+    },
+    
+  });
+  const updateTextColorMutation = useMutation({
+    mutationFn: ({ id, textColor }: { id: string; textColor: string }) =>
+      updateNote(id, {textColor}),
+    onMutate: async ({ id, textColor }) => {
+      await queryClient.cancelQueries({ queryKey: ["notes"] });
+      const previousNotes = queryClient.getQueryData<Note[]>(["notes"]);
+
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) => (note.id === id ? { ...note, textColor } : note))
       );
 
       return { previousNotes };
@@ -107,6 +134,7 @@ export function useNoteMutations() {
     editNote: editNoteMutation,
     updatePosition: updatePositionMutation,
     updateColor: updateColorMutation,
+    updateTextColor: updateTextColorMutation,
     deleteNote: deleteNoteMutation,
   };
 }

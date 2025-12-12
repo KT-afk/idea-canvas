@@ -20,7 +20,7 @@ function App() {
     queryFn: fetchNotes,
   });
 
-  const { addNote, editNote, updatePosition, updateColor, deleteNote } = useNoteMutations();
+  const { addNote, editNote, updatePosition, updateColor, updateTextColor, deleteNote } = useNoteMutations();
   const { order, bringToFront } = useZIndexManager(notes);
 
   const handleAddNote = () => {
@@ -60,11 +60,13 @@ function App() {
                   x={note.x ?? 0}
                   y={note.y ?? 0}
                   color={note.color ?? "yellow"}
+                  textColor={note.textColor ?? "black"}
                   content={note.content}
                   onEdit={(id, newContent) =>
                     editNote.mutateAsync({ id, payload: { content: newContent } })
                   }
                   onColorChange={(color) => updateColor.mutate({id:note.id, color})}
+                  onTextColorChange={(textColor) => updateTextColor.mutate({id:note.id, textColor})}
                   onDelete={(id) => deleteNote.mutate(id)}
                   zIndex={order[note.id] ?? 0}
                   onBringToFront={() => bringToFront(note.id)}
