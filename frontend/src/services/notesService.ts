@@ -1,8 +1,10 @@
 import type { Note } from "../types/types";
 
+const API_URL = import.meta.env.VITE_API_URL || "";
+
 // ✅ Fetch all notes
 export async function fetchNotes() {
-  const res = await fetch("/api/notes");
+  const res = await fetch(`${API_URL}/api/notes`);
   if (!res.ok) throw new Error("Failed to fetch notes");
   const data = await res.json();
   return data.result.map((note: Note) => ({
@@ -17,14 +19,14 @@ export async function fetchNotes() {
 
 // ✅ Fetch notes by board
 export async function fetchNotesByBoard(boardId: number) {
-  const res = await fetch(`/api/notes/board/${boardId}`);
+  const res = await fetch(`${API_URL}/api/notes/board/${boardId}`);
   if (!res.ok) throw new Error(`Failed to fetch notes for the board ${boardId}`);
   return res.json();
 }
 
 // ✅ Create a note
 export async function createNote(note: unknown) {
-  const res = await fetch("/api/notes", {
+  const res = await fetch(`${API_URL}/api/notes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(note),
@@ -36,7 +38,7 @@ export async function createNote(note: unknown) {
 
 // ✅ Update note content or position
 export async function updateNote(id: string, payload: Partial<Pick<Note, "content" | "x" | "y" | "width" | "height" | "color" | "textColor" >>): Promise<Note> {
-  const res = await fetch(`/api/notes/${id}`, {
+  const res = await fetch(`${API_URL}/api/notes/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -47,7 +49,7 @@ export async function updateNote(id: string, payload: Partial<Pick<Note, "conten
 
 // ✅ Delete note
 export async function deleteNote(id: string): Promise<void> {
-  const res = await fetch(`/api/notes/${id}`, {
+  const res = await fetch(`${API_URL}/api/notes/${id}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });
