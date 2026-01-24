@@ -20,11 +20,9 @@ export function useNoteMutations() {
       id: string;
       payload: Partial<{
         content: string;
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-        color: string;
+        positionX: number;
+        positionY: number;
+        backgroundColor: string;
         textColor: string;
       }>;
     }) => updateNote(id, payload),
@@ -57,14 +55,14 @@ export function useNoteMutations() {
   });
 
   const updatePositionMutation = useMutation({
-    mutationFn: ({ id, x, y }: { id: string; x: number; y: number }) =>
-      updateNote(id, { x, y }),
-    onMutate: async ({ id, x, y }) => {
+    mutationFn: ({ id, positionX, positionY }: { id: string; positionX: number; positionY: number }) =>
+      updateNote(id, { positionX, positionY }),
+    onMutate: async ({ id, positionX, positionY }) => {
       await queryClient.cancelQueries({ queryKey: ["notes"] });
       const previousNotes = queryClient.getQueryData<Note[]>(["notes"]);
 
       queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
-        oldNotes.map((note) => (note.id === id ? { ...note, x, y } : note))
+        oldNotes.map((note) => (note.id === id ? { ...note, positionX, positionY } : note))
       );
 
       return { previousNotes };
@@ -83,14 +81,14 @@ export function useNoteMutations() {
     },
   });
   const updateColorMutation = useMutation({
-    mutationFn: ({ id, color }: { id: string; color: string }) =>
-      updateNote(id, {color}),
-    onMutate: async ({ id, color }) => {
+    mutationFn: ({ id, backgroundColor }: { id: string; backgroundColor: string }) =>
+      updateNote(id, {backgroundColor}),
+    onMutate: async ({ id, backgroundColor }) => {
       await queryClient.cancelQueries({ queryKey: ["notes"] });
       const previousNotes = queryClient.getQueryData<Note[]>(["notes"]);
 
       queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
-        oldNotes.map((note) => (note.id === id ? { ...note, color } : note))
+        oldNotes.map((note) => (note.id === id ? { ...note, backgroundColor } : note))
       );
 
       return { previousNotes };

@@ -23,6 +23,14 @@ export default class Boards extends Model<InferAttributes<Boards>, InferAttribut
         field: "NAME",
     })
     declare name: string;
+
+    @Column({
+        type: DataType.UUID,
+        allowNull: true,
+        field: "USERID",
+    })
+    declare userId: string | null;
+
     @HasMany(() => NOTES, {
         foreignKey: "boardId",
         sourceKey: "id",

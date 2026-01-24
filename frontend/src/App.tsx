@@ -25,9 +25,9 @@ function App() {
 
   const handleAddNote = () => {
     const offset = (notes.length % 5) * 25;
-    const x = window.innerWidth / 2 + offset - 96;
-    const y = window.innerHeight / 2 + offset - 48;
-    addNote.mutate({ content: "New Note", x, y });
+    const positionX = window.innerWidth / 2 + offset - 96;
+    const positionY = window.innerHeight / 2 + offset - 48;
+    addNote.mutate({ content: "New Note", positionX, positionY });
   };
 
   // Handle loading and error states after hooks
@@ -42,13 +42,13 @@ function App() {
   if (notes.length === 0) {
     console.log("No notes found, rendering empty state.");
     return (
-      <div className="h-screen w-screen bg-black">
+      <div className="h-screen w-screen bg-background">
         <EmptyState onAdd={handleAddNote} />
       </div>
     );
   } else {
     return (
-      <div ref={boardRef} className="fixed inset-0 overflow-hidden bg-black">
+      <div ref={boardRef} className="fixed inset-0 overflow-hidden bg-background">
         <Button onClick={handleAddNote}>+</Button>
         <AnimatePresence>
           {boardRef &&
@@ -57,20 +57,20 @@ function App() {
                 <NoteCard
                   id={note.id}
                   key={note.id}
-                  x={note.x ?? 0}
-                  y={note.y ?? 0}
-                  color={note.color ?? "yellow"}
+                  positionX={note.positionX ?? 0}
+                  positionY={note.positionY ?? 0}
+                  backgroundColor={note.backgroundColor ?? "yellow"}
                   textColor={note.textColor ?? "black"}
                   content={note.content}
                   onEdit={(id, newContent) =>
                     editNote.mutateAsync({ id, payload: { content: newContent } })
                   }
-                  onColorChange={(color) => updateColor.mutate({id:note.id, color})}
+                  onColorChange={(backgroundColor) => updateColor.mutate({id:note.id, backgroundColor})}
                   onTextColorChange={(textColor) => updateTextColor.mutate({id:note.id, textColor})}
                   onDelete={(id) => deleteNote.mutate(id)}
                   zIndex={order[note.id] ?? 0}
                   onBringToFront={() => bringToFront(note.id)}
-                  onDragEndSave={(id, x, y) => updatePosition.mutate({ id, x, y })}
+                  onDragEndSave={(id, positionX, positionY) => updatePosition.mutate({ id, positionX, positionY })}
                   dragRef={boardRef}
                 />
               );
