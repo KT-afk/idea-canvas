@@ -16,45 +16,79 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
         field: "ID",
     })
     declare id: CreationOptional<string>;
+
+    @Column({
+        type: DataType.STRING,
+        allowNull: true,
+        field: "TITLE",
+    })
+    declare title: string | null;
+
     @Column({
         type: DataType.TEXT,
         allowNull: false,
         field: "CONTENT",
     })
     declare content: string;
+
+    @Column({
+        type: DataType.ENUM('note', 'idea', 'plan'),
+        allowNull: false,
+        defaultValue: 'note',
+        field: "TYPE",
+    })
+    declare type: 'note' | 'idea' | 'plan';
+
+    @Column({
+        type: DataType.ENUM('active', 'archived', 'graduated'),
+        allowNull: false,
+        defaultValue: 'active',
+        field: "STATUS",
+    })
+    declare status: 'active' | 'archived' | 'graduated';
+
     @Column({
         type: DataType.DECIMAL(10, 2),
         allowNull: false,
-        field: "X",
+        field: "POSITIONX",
     })
-    declare x: number;
+    declare positionX: number;
+
     @Column({
         type: DataType.DECIMAL(10, 2),
         allowNull: false,
-        field: "Y",
+        field: "POSITIONY",
     })
-    declare y: number;
+    declare positionY: number;
+
     @Column({
-        type: DataType.DECIMAL(5, 2),
+        type: DataType.STRING,
         allowNull: false,
-        field: "WIDTH",
-        defaultValue: 192,
+        defaultValue: "yellow",
+        field: "BACKGROUNDCOLOR",
     })
-    declare width: number;
-    @Column({
-        type: DataType.DECIMAL(5, 2),
-        allowNull: false,
-        field: "HEIGHT",
-        defaultValue: 96,
-    })
-    declare height: number;
+    declare backgroundColor: string;
 
     @Column({
         type: DataType.UUID,
         allowNull: true,
         field: "BOARDID",
     })
-    declare boardId: string;
+    declare boardId: string | null;
+
+    @Column({
+        type: DataType.UUID,
+        allowNull: true,
+        field: "USERID",
+    })
+    declare userId: string | null;
+
+    @Column({
+        type: DataType.DATE,
+        allowNull: true,
+        field: "ARCHIVEDAT",
+    })
+    declare archivedAt: Date | null;
 
     @BelongsTo(() => Boards, {
         foreignKey: "boardId",
@@ -70,14 +104,6 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
     declare zIndex: number;
 
     @Column({
-        type: DataType.STRING,
-        allowNull: false,
-        defaultValue: "yellow",
-        field: "COLOR",
-    })
-    declare color: string;
-
-     @Column({
         type: DataType.STRING,
         allowNull: false,
         defaultValue: "black",

@@ -2,6 +2,8 @@ import cors from "cors";
 import express from "express";
 import { connectDB, sequelize } from "./config/db";
 import { router } from "./routes/notes-route";
+import { boardsRouter } from "./routes/boards-route";
+import { apiLimiter } from "./middleware/rateLimiter";
 
 const app = express();
 
@@ -37,7 +39,11 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
+// Apply rate limiting to API routes (100 requests/min per IP)
+app.use('/api', apiLimiter);
+
 app.use("/api", router);
+app.use("/api", boardsRouter);
 const port = process.env.PORT || 3000;
 
 

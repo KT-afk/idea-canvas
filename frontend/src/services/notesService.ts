@@ -7,12 +7,10 @@ export async function fetchNotes() {
   const res = await fetch(`${API_URL}/api/notes`);
   if (!res.ok) throw new Error("Failed to fetch notes");
   const data = await res.json();
-  return data.result.map((note: Note) => ({
+  return data.data.map((note: any) => ({
       ...note,
-      x: Number(note.x),
-      y: Number(note.y),
-      width: Number(note.width),
-      height: Number(note.height),
+      positionX: Number(note.positionX),
+      positionY: Number(note.positionY),
     }
 ));
 }
@@ -21,7 +19,8 @@ export async function fetchNotes() {
 export async function fetchNotesByBoard(boardId: number) {
   const res = await fetch(`${API_URL}/api/notes/board/${boardId}`);
   if (!res.ok) throw new Error(`Failed to fetch notes for the board ${boardId}`);
-  return res.json();
+  const data = await res.json();
+  return data.data;
 }
 
 // ✅ Create a note
@@ -33,18 +32,19 @@ export async function createNote(note: unknown) {
   });
   if (!res.ok) throw new Error("Failed to create note");
   const data = await res.json();
-  return data.note;
+  return data.data;
 }
 
 // ✅ Update note content or position
-export async function updateNote(id: string, payload: Partial<Pick<Note, "content" | "x" | "y" | "width" | "height" | "color" | "textColor" >>): Promise<Note> {
+export async function updateNote(id: string, payload: Partial<Pick<Note, "content" | "positionX" | "positionY" | "backgroundColor" | "textColor" >>): Promise<Note> {
   const res = await fetch(`${API_URL}/api/notes/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("Failed to update note");
-  return res.json();
+  const data = await res.json();
+  return data.data;
 }
 
 // ✅ Delete note

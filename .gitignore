@@ -3,3 +3,27 @@ node_modules/
 dist/
 
 **/.env
+
+# BMAD files and AI agent directories
+_bmad/
+_bmad-output/
+.agent/
+.opencode/
+.claude/
+.cursor/
+.augment/
+.clinerules/
+.crush/
+.gemini/
+.github/
+.iflow/
+.kilocodemodes
+.kiro/
+.qwen/
+.roo/
+.rovodev/
+.trae/
+.windsurf/
+
+# Documentation (if generated)
+docs/

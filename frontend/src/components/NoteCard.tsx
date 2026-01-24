@@ -7,26 +7,26 @@ import { ColorPickerPopover } from "./Popover";
 interface NoteCardProps {
   id: string;
   content: string;
-  x: number;
-  y: number;
-  color: string;
+  positionX: number;
+  positionY: number;
+  backgroundColor: string;
   textColor: string;
   zIndex: number;
-  onColorChange: (color: string) => void;
+  onColorChange: (backgroundColor: string) => void;
   onTextColorChange: (textColor: string) => void;
   onEdit: (id: string, newContent: string) => void;
   onDelete: (id: string) => void;
   onBringToFront: (id: string) => void;
-  onDragEndSave: (id: string, x: number, y: number) => void;
+  onDragEndSave: (id: string, positionX: number, positionY: number) => void;
   dragRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export function NoteCard({
   id,
   content,
-  x,
-  y,
-  color,
+  positionX,
+  positionY,
+  backgroundColor,
   textColor,
   zIndex,
   onColorChange,
@@ -40,26 +40,26 @@ export function NoteCard({
   const [editableText, setEditableText] = useState(content);
   const [isDragging, setIsDragging] = useState(false);
   const noteRef = useRef<HTMLDivElement>(null);
-  const lastSavedPos = useRef({ x, y });
+  const lastSavedPos = useRef({ positionX, positionY });
   const dragControls = useDragControls();
 
   // Use motion values for smooth dragging without re-renders
-  const motionX = useMotionValue(x);
-  const motionY = useMotionValue(y);
+  const motionX = useMotionValue(positionX);
+  const motionY = useMotionValue(positionY);
   useEffect(() => {
     // Only update if not dragging AND position actually changed significantly
     if (!isDragging) {
-      const deltaX = Math.abs(x - lastSavedPos.current.x);
-      const deltaY = Math.abs(y - lastSavedPos.current.y);
+      const deltaX = Math.abs(positionX - lastSavedPos.current.positionX);
+      const deltaY = Math.abs(positionY - lastSavedPos.current.positionY);
 
       // Only update if position changed by more than 2px (avoids rounding issues)
       if (deltaX > 2 || deltaY > 2) {
-        motionX.set(x);
-        motionY.set(y);
-        lastSavedPos.current = { x, y };
+        motionX.set(positionX);
+        motionY.set(positionY);
+        lastSavedPos.current = { positionX, positionY };
       }
     }
-  }, [x, y, isDragging, motionX, motionY]);
+  }, [positionX, positionY, isDragging, motionX, motionY]);
   
   useEffect(() => {
     setEditableText(content);
@@ -73,7 +73,7 @@ export function NoteCard({
         x: motionX,
         y: motionY,
         zIndex: zIndex ?? 0,
-        backgroundColor: getColorClass(color),
+        backgroundColor: getColorClass(backgroundColor),
         color: getColorClass(textColor),
       }}
       drag
@@ -94,7 +94,7 @@ export function NoteCard({
         const finalY = motionY.get();
 
         // Update last saved position to prevent reset
-        lastSavedPos.current = { x: finalX, y: finalY };
+        lastSavedPos.current = { positionX: finalX, positionY: finalY };
 
         // Save to backend
         onDragEndSave(id, Math.round(finalX), Math.round(finalY));

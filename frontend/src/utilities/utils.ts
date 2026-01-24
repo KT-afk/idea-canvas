@@ -1,12 +1,3 @@
-import type { Note } from "../types/types";
-
-export const normalizeNote = (note: Note): Note => ({
-  ...note,
-  x: Number(note.x) || 0,
-  y: Number(note.y) || 0,
-  width: Number(note.width) || 192,
-  height: Number(note.height) || 96,
-});
 // Color mapping for note backgrounds with varied intensities
 export const getColorClass = (color: string): string => {
   const colorMap: Record<string, string> = {
