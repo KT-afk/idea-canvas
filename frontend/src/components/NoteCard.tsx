@@ -18,7 +18,6 @@ interface NoteCardProps {
   onDelete: (id: string) => void;
   onBringToFront: (id: string) => void;
   onDragEndSave: (id: string, positionX: number, positionY: number) => void;
-  dragRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export function NoteCard({
@@ -35,7 +34,6 @@ export function NoteCard({
   onDelete,
   onBringToFront,
   onDragEndSave,
-  dragRef,
 }: Readonly<NoteCardProps>) {
   const [editableText, setEditableText] = useState(content);
   const [isDragging, setIsDragging] = useState(false);
@@ -44,8 +42,10 @@ export function NoteCard({
   const dragControls = useDragControls();
 
   // Use motion values for smooth dragging without re-renders
+  // Cards use CANVAS coordinates because they're inside transformed BoardCanvas
   const motionX = useMotionValue(positionX);
   const motionY = useMotionValue(positionY);
+
   useEffect(() => {
     // Only update if not dragging AND position actually changed significantly
     if (!isDragging) {
@@ -75,13 +75,14 @@ export function NoteCard({
         zIndex: zIndex ?? 0,
         backgroundColor: getColorClass(backgroundColor),
         color: getColorClass(textColor),
+        pointerEvents: "auto", // Issue #13 fix: Ensure notes capture pointer events
       }}
       drag
       dragControls={dragControls}
       dragListener={false}
       dragMomentum={false}
       dragElastic={0}
-      dragConstraints={dragRef}
+      // Issue #13 fix: Remove dragConstraints so notes can move anywhere in canvas space
       dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
       whileDrag={{ scale: 1.05, rotate: 2 }}
       onDragStart={() => {
@@ -96,7 +97,7 @@ export function NoteCard({
         // Update last saved position to prevent reset
         lastSavedPos.current = { positionX: finalX, positionY: finalY };
 
-        // Save to backend
+        // Save to backend (already in canvas coordinates)
         onDragEndSave(id, Math.round(finalX), Math.round(finalY));
 
         // Allow props to take over again
