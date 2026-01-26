@@ -1,8 +1,12 @@
 import { getColorClass } from "@/utilities/utils";
 import { motion, useDragControls, useMotionValue } from "framer-motion";
 import { ClipboardList, Lightbulb, PaintBucket, StickyNote, Type, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ColorPickerPopover } from "./Popover";
+
+// Story 1.4: Named constants for keyboard movement (replaces magic numbers)
+const KEYBOARD_STEP_NORMAL = 10;
+const KEYBOARD_STEP_FAST = 50;
 
 interface NoteCardProps {
   id: string;
@@ -45,6 +49,8 @@ export function NoteCard({
   const TypeIcon = type === 'idea' ? Lightbulb : type === 'plan' ? ClipboardList : StickyNote;
   const [editableText, setEditableText] = useState(content);
   const [isDragging, setIsDragging] = useState(false);
+  const [isKeyboardMoving, setIsKeyboardMoving] = useState(false); // Story 1.4: Visual feedback for keyboard movement
+  const [ariaAnnouncement, setAriaAnnouncement] = useState(''); // Story 1.4: Screen reader announcements
   const [hasUserInteracted, setHasUserInteracted] = useState(false); // Story 1.3: Track if user has typed
   const noteRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null); // Story 1.3: Ref for auto-focus
@@ -104,7 +110,33 @@ export function NoteCard({
     }
   };
 
-  // Story 1.3: Handle Escape key - save or discard based on content
+  // Story 1.4: Debounce ref for keyboard movement position saves
+  const keyboardSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Story 1.4: Debounced save for keyboard movement (500ms delay)
+  const debouncedSavePosition = useCallback((newX: number, newY: number) => {
+    if (keyboardSaveTimeout.current) {
+      clearTimeout(keyboardSaveTimeout.current);
+    }
+    // Show visual feedback during keyboard movement
+    setIsKeyboardMoving(true);
+    keyboardSaveTimeout.current = setTimeout(() => {
+      onDragEndSave(id, Math.round(newX), Math.round(newY));
+      lastSavedPos.current = { positionX: newX, positionY: newY };
+      setIsKeyboardMoving(false); // Clear visual feedback after save
+    }, 500);
+  }, [id, onDragEndSave]);
+
+  // Cleanup debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (keyboardSaveTimeout.current) {
+        clearTimeout(keyboardSaveTimeout.current);
+      }
+    };
+  }, []);
+
+  // Story 1.3 & 1.4: Handle keyboard events - Escape and Arrow keys
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -123,12 +155,51 @@ export function NoteCard({
     }
   };
 
+  // Story 1.4 AC#9: Arrow key movement when card container is focused (not textarea)
+  const handleCardKeyDown = (e: React.KeyboardEvent) => {
+    // Only handle arrow keys if the card container itself is focused (not textarea)
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      return;
+    }
+
+    // Don't intercept if textarea or other input is focused
+    if (document.activeElement !== noteRef.current) {
+      return;
+    }
+
+    e.preventDefault();
+    const step = e.shiftKey ? KEYBOARD_STEP_FAST : KEYBOARD_STEP_NORMAL;
+    let newX = motionX.get();
+    let newY = motionY.get();
+
+    switch (e.key) {
+      case 'ArrowUp': newY -= step; break;
+      case 'ArrowDown': newY += step; break;
+      case 'ArrowLeft': newX -= step; break;
+      case 'ArrowRight': newX += step; break;
+    }
+
+    // Update motion values for immediate visual feedback
+    motionX.set(newX);
+    motionY.set(newY);
+
+    // Bring card to front when moving with keyboard
+    onBringToFront(id);
+
+    // Announce position change to screen readers
+    setAriaAnnouncement(`Moved ${e.key.replace('Arrow', '').toLowerCase()} by ${step} pixels`);
+
+    // Debounced save to backend
+    debouncedSavePosition(newX, newY);
+  };
+
   return (
     <motion.div
       ref={noteRef}
       role="region"
       aria-label={`Note: ${editableText.substring(0, 30)}${editableText.length > 30 ? '...' : ''}`}
       tabIndex={0}
+      onKeyDown={handleCardKeyDown}
       style={{
         position: "absolute",
         x: motionX,
@@ -137,6 +208,7 @@ export function NoteCard({
         backgroundColor: getColorClass(backgroundColor),
         color: getColorClass(textColor),
         pointerEvents: "auto", // Issue #13 fix: Ensure notes capture pointer events
+        cursor: isDragging ? 'grabbing' : undefined, // Story 1.4: Cursor during drag
       }}
       drag
       dragControls={dragControls}
@@ -164,11 +236,17 @@ export function NoteCard({
         // Allow props to take over again
         setIsDragging(false);
       }}
-      className="relative p-4 rounded-xl w-48 shadow-[0_3px_10px_rgb(0,0,0,0.2)] hover:shadow-[0_8px_20px_rgb(0,0,0,0.3)] transition-shadow duration-200"
+      className={`relative p-4 rounded-xl w-48 shadow-[0_3px_10px_rgb(0,0,0,0.2)] hover:shadow-[0_8px_20px_rgb(0,0,0,0.3)] transition-shadow duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${isKeyboardMoving ? 'ring-2 ring-primary/50' : ''}`}
     >
-      {/* Invisible drag handle area - only top section is draggable */}
+      {/* Story 1.4: ARIA live region for screen reader announcements */}
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {ariaAnnouncement}
+      </span>
+
+      {/* Story 1.4: Invisible drag handle area - top section is draggable
+          Height is 44px (h-11) to meet mobile touch target requirements (NFR17) */}
       <div
-        className="absolute top-0 left-0 right-0 h-10 cursor-grab active:cursor-grabbing z-0"
+        className="absolute top-0 left-0 right-0 h-11 cursor-grab active:cursor-grabbing z-0"
         onPointerDown={(e) => {
           e.stopPropagation(); // Prevent BoardCanvas from capturing this event
           dragControls.start(e);

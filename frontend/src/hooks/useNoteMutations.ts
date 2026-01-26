@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { createNote, deleteNote, updateNote } from "../services/notesService";
 import type { Note } from "../types/types";
 
@@ -68,13 +69,18 @@ export function useNoteMutations() {
     },
   });
 
+  // Story 1.4: Position update with optimistic UI, retry, and rollback on error
   const updatePositionMutation = useMutation({
     mutationFn: ({ id, positionX, positionY }: { id: string; positionX: number; positionY: number }) =>
       updateNote(id, { positionX, positionY }),
+    // Story 1.4 AC#5: Auto-retry once on failure
+    retry: 1,
+    retryDelay: 500,
     onMutate: async ({ id, positionX, positionY }) => {
       await queryClient.cancelQueries({ queryKey: ["notes"] });
       const previousNotes = queryClient.getQueryData<Note[]>(["notes"]);
 
+      // Optimistically update cache with new position
       queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
         oldNotes.map((note) => (note.id === id ? { ...note, positionX, positionY } : note))
       );
@@ -82,9 +88,11 @@ export function useNoteMutations() {
       return { previousNotes };
     },
     onError: (_err, _var, context) => {
+      // Story 1.4 AC#5: Rollback position and show error toast after retries exhausted
       if (context?.previousNotes) {
         queryClient.setQueryData(["notes"], context.previousNotes);
       }
+      toast.error("Failed to save position");
     },
     onSettled: () => {
       // Don't refetch immediately.
