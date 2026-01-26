@@ -7,6 +7,7 @@ interface BoardCanvasProps {
   zoom: number;
   onZoomChange: (zoom: number) => void;
   onPanChange: (position: { x: number; y: number }) => void;
+  onDoubleClickCreate?: (screenX: number, screenY: number) => void; // Story 1.3: Create note on double-click
 }
 
 export interface BoardCanvasHandle {
@@ -26,7 +27,7 @@ const getHomePosition = () => ({
 });
 
 export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
-  ({ children, zoom, onZoomChange, onPanChange }, ref) => {
+  ({ children, zoom, onZoomChange, onPanChange, onDoubleClickCreate }, ref) => {
   // Motion values for smooth dragging without re-renders
   // Start at home position (centered)
   const homePos = getHomePosition();
@@ -199,15 +200,21 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
     }
   }, [prefersReducedMotion, x, y, onZoomChange]);
 
-  // Double-click handler for home position reset
+  // Story 1.3: Double-click handler - create note at clicked position OR reset home
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
-      // Only reset if clicking on canvas background, not on cards
+      // Only handle if clicking on canvas background, not on cards
       if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('canvas-background')) {
-        resetToHome();
+        // Story 1.3: If onDoubleClickCreate is provided, create a note at the clicked position
+        if (onDoubleClickCreate) {
+          onDoubleClickCreate(e.clientX, e.clientY);
+        } else {
+          // Fallback to home reset (original behavior)
+          resetToHome();
+        }
       }
     },
-    [resetToHome]
+    [resetToHome, onDoubleClickCreate]
   );
 
   // Pinch gesture zoom for touch devices
