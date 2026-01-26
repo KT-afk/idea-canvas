@@ -3,16 +3,16 @@ import type { Note } from "../types/types";
 const API_URL = import.meta.env.VITE_API_URL || "";
 
 // ✅ Fetch all notes
-export async function fetchNotes() {
+export async function fetchNotes(): Promise<Note[]> {
   const res = await fetch(`${API_URL}/api/notes`);
   if (!res.ok) throw new Error("Failed to fetch notes");
   const data = await res.json();
-  return data.data.map((note: any) => ({
+  return data.data.map((note: Note) => ({
       ...note,
       positionX: Number(note.positionX),
       positionY: Number(note.positionY),
     }
-));
+  ));
 }
 
 // ✅ Fetch notes by board
@@ -24,7 +24,13 @@ export async function fetchNotesByBoard(boardId: number) {
 }
 
 // ✅ Create a note
-export async function createNote(note: unknown) {
+export async function createNote(note: {
+  content: string;
+  positionX: number;
+  positionY: number;
+  type?: 'note' | 'idea' | 'plan';
+  status?: 'active' | 'archived' | 'graduated';
+}): Promise<Note> {
   const res = await fetch(`${API_URL}/api/notes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -32,7 +38,12 @@ export async function createNote(note: unknown) {
   });
   if (!res.ok) throw new Error("Failed to create note");
   const data = await res.json();
-  return data.data;
+  // Ensure positions are numbers (consistent with fetchNotes)
+  return {
+    ...data.data,
+    positionX: Number(data.data.positionX),
+    positionY: Number(data.data.positionY),
+  };
 }
 
 // ✅ Update note content or position

@@ -1,0 +1,63 @@
+import { motion } from "framer-motion";
+
+interface NoteCardSkeletonProps {
+  positionX: number;
+  positionY: number;
+}
+
+/**
+ * Story 1.3: Skeleton placeholder shown immediately when creating a note.
+ * Provides instant visual feedback (optimistic feel) while waiting for server response.
+ * Not interactive - user can't type until real NoteCard renders.
+ */
+export function NoteCardSkeleton({ positionX, positionY }: NoteCardSkeletonProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.15 }}
+      style={{
+        position: "absolute",
+        x: positionX,
+        y: positionY,
+        zIndex: 9999, // Always on top while creating
+      }}
+      className="relative p-4 rounded-xl w-48 bg-yellow-200 shadow-[0_3px_10px_rgb(0,0,0,0.2)]"
+      aria-label="Creating new note..."
+      role="status"
+    >
+      {/* Skeleton header buttons */}
+      <div className="absolute top-2.5 left-2.5 flex gap-1.5">
+        <div className="w-5 h-5 rounded bg-yellow-300 animate-pulse" />
+        <div className="w-5 h-5 rounded bg-yellow-300 animate-pulse" />
+      </div>
+      <div className="absolute top-2.5 right-2.5">
+        <div className="w-6 h-6 rounded-full bg-yellow-300 animate-pulse" />
+      </div>
+
+      {/* Divider line */}
+      <div className="h-px bg-black/15 mb-4 mt-8 -mx-4" />
+
+      {/* Skeleton content area */}
+      <div className="space-y-2">
+        <div className="h-4 bg-yellow-300 rounded animate-pulse w-3/4" />
+        <div className="h-4 bg-yellow-300 rounded animate-pulse w-1/2" />
+        <div className="h-4 bg-yellow-300 rounded animate-pulse w-2/3" />
+      </div>
+
+      {/* Type badge skeleton */}
+      <div className="absolute bottom-2 right-2 flex items-center gap-1">
+        <div className="w-3 h-3 rounded bg-yellow-300 animate-pulse" />
+        <div className="w-8 h-3 rounded bg-yellow-300 animate-pulse" />
+      </div>
+
+      {/* Creating indicator */}
+      <div className="absolute inset-0 flex items-center justify-center bg-yellow-200/80 rounded-xl">
+        <span className="text-yellow-800 text-sm font-medium animate-pulse">
+          Creating...
+        </span>
+      </div>
+    </motion.div>
+  );
+}

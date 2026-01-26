@@ -5,10 +5,24 @@ import type { Note } from "../types/types";
 export function useNoteMutations() {
   const queryClient = useQueryClient();
 
+  // Story 1.3: Simple note creation - wait for server response
+  // No optimistic UI to avoid ID mismatch issues with auto-focus
   const addNoteMutation = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
+    mutationFn: (data: {
+      content: string;
+      positionX: number;
+      positionY: number;
+      type?: 'note' | 'idea' | 'plan';
+      status?: 'active' | 'archived' | 'graduated';
+    }) => createNote(data),
+    onSuccess: (data) => {
+      // Add the new note to the cache with server-assigned ID
+      if (data) {
+        queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) => [
+          ...oldNotes,
+          data,
+        ]);
+      }
     },
   });
 

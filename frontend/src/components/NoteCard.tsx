@@ -1,6 +1,6 @@
 import { getColorClass } from "@/utilities/utils";
 import { motion, useDragControls, useMotionValue } from "framer-motion";
-import { PaintBucket, Type, X } from "lucide-react";
+import { ClipboardList, Lightbulb, PaintBucket, StickyNote, Type, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ColorPickerPopover } from "./Popover";
 
@@ -12,12 +12,15 @@ interface NoteCardProps {
   backgroundColor: string;
   textColor: string;
   zIndex: number;
+  type?: 'note' | 'idea' | 'plan'; // Story 1.3: Card type
+  isNew?: boolean; // Story 1.3: Flag for newly created notes to trigger auto-focus
   onColorChange: (backgroundColor: string) => void;
   onTextColorChange: (textColor: string) => void;
   onEdit: (id: string, newContent: string) => void;
   onDelete: (id: string) => void;
   onBringToFront: (id: string) => void;
   onDragEndSave: (id: string, positionX: number, positionY: number) => void;
+  onNewNoteFocused?: (id: string) => void; // Story 1.3: Callback when new note receives focus
 }
 
 export function NoteCard({
@@ -28,16 +31,23 @@ export function NoteCard({
   backgroundColor,
   textColor,
   zIndex,
+  type = 'note',
+  isNew = false,
   onColorChange,
   onTextColorChange,
   onEdit,
   onDelete,
   onBringToFront,
   onDragEndSave,
+  onNewNoteFocused,
 }: Readonly<NoteCardProps>) {
+  // Story 1.3: Type indicator icon
+  const TypeIcon = type === 'idea' ? Lightbulb : type === 'plan' ? ClipboardList : StickyNote;
   const [editableText, setEditableText] = useState(content);
   const [isDragging, setIsDragging] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false); // Story 1.3: Track if user has typed
   const noteRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null); // Story 1.3: Ref for auto-focus
   const lastSavedPos = useRef({ positionX, positionY });
   const dragControls = useDragControls();
 
@@ -65,9 +75,60 @@ export function NoteCard({
     setEditableText(content);
   }, [content]);
 
+  // Story 1.3: Auto-focus textarea when note is newly created
+  useEffect(() => {
+    if (isNew && textareaRef.current) {
+      textareaRef.current.focus();
+      // Select all text so user can immediately type over the placeholder space
+      textareaRef.current.select();
+      // Notify parent that focus has been applied
+      onNewNoteFocused?.(id);
+    }
+  }, [isNew, id, onNewNoteFocused]);
+
+  // Story 1.3: Handle blur - save if content exists, delete if empty
+  // Only delete if user has actually interacted (typed something then deleted it)
+  // AND not during the settling period (prevents deletion during React Query refetch)
+  const handleBlur = () => {
+    const trimmedContent = editableText.trim();
+
+    if (trimmedContent === '') {
+      // Only discard if user has interacted (typed something then deleted it)
+      if (hasUserInteracted) {
+        onDelete(id);
+      }
+      // If user hasn't interacted, don't delete - they might not have started typing yet
+    } else if (trimmedContent !== content) {
+      // Save if changed
+      onEdit(id, trimmedContent);
+    }
+  };
+
+  // Story 1.3: Handle Escape key - save or discard based on content
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      const trimmedContent = editableText.trim();
+
+      if (trimmedContent === '') {
+        // Discard empty note - Escape is an explicit user action, so always delete
+        onDelete(id);
+      } else {
+        // Save and blur
+        if (trimmedContent !== content) {
+          onEdit(id, trimmedContent);
+        }
+        textareaRef.current?.blur();
+      }
+    }
+  };
+
   return (
     <motion.div
       ref={noteRef}
+      role="region"
+      aria-label={`Note: ${editableText.substring(0, 30)}${editableText.length > 30 ? '...' : ''}`}
+      tabIndex={0}
       style={{
         position: "absolute",
         x: motionX,
@@ -108,7 +169,10 @@ export function NoteCard({
       {/* Invisible drag handle area - only top section is draggable */}
       <div
         className="absolute top-0 left-0 right-0 h-10 cursor-grab active:cursor-grabbing z-0"
-        onPointerDown={(e) => dragControls.start(e)}
+        onPointerDown={(e) => {
+          e.stopPropagation(); // Prevent BoardCanvas from capturing this event
+          dragControls.start(e);
+        }}
       />
 
       <div className="absolute top-2.5 left-2.5 flex gap-1.5 z-10">
@@ -117,20 +181,33 @@ export function NoteCard({
       </div>
       <button
         onClick={() => onDelete(id)}
-        className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center hover:text-red-600 transition-colors z-10"
+        className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center hover:text-red-600 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none transition-colors z-10"
+        aria-label="Delete note"
       >
         <X className="w-5 h-5" />
       </button>
 
       <div className="h-px bg-black/15 mb-4 mt-8 -mx-4" />
 
+      {/* Story 1.3: Type indicator badge */}
+      <div className="absolute bottom-2 right-2 flex items-center gap-1 text-xs opacity-60 z-10">
+        <TypeIcon className="w-3 h-3" />
+        <span className="capitalize">{type}</span>
+      </div>
+
       <textarea
+        ref={textareaRef}
         style={{color: getColorClass(textColor)}}
-        className="w-full h-24 bg-transparent resize-none focus:outline-none text-base leading-relaxed"
+        className="w-full h-24 bg-transparent resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 rounded text-base leading-relaxed"
         value={editableText}
-        onChange={(e) => setEditableText(e.target.value)}
-        onBlur={() => onEdit(id, editableText)}
+        onChange={(e) => {
+          setEditableText(e.target.value);
+          setHasUserInteracted(true); // Mark that user has typed
+        }}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
         placeholder="Type something..."
+        aria-label="Note content"
       />
     </motion.div>
   );
