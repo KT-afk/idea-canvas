@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
-import { useRef, useState, useMemo, useEffect, useCallback } from "react";
-import { EmptyState } from "./components/EmptyState";
-import { NoteCard } from "./components/NoteCard";
-import { NoteCardSkeleton } from "./components/NoteCardSkeleton";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BoardCanvas, type BoardCanvasHandle } from "./components/BoardCanvas";
 import { CanvasControls } from "./components/CanvasControls";
+import { EmptyState } from "./components/EmptyState";
+import { NoteCard } from "./components/NoteCard";
+import { IdeaCard } from "./components/IdeaCard"; // Story 1.6
+import { PlanCard } from "./components/PlanCard"; // Story 1.6
+import { NoteCardSkeleton } from "./components/NoteCardSkeleton";
 import { useNoteMutations } from "./hooks/useNoteMutations";
 import { useZIndexManager } from "./hooks/useZIndexManager";
 import { fetchNotes } from "./services/notesService";
@@ -36,11 +38,11 @@ function App() {
     queryFn: fetchNotes,
   });
 
-  const { addNote, editNote, updatePosition, updateColor, updateTextColor, deleteNote } = useNoteMutations();
+  const { addNote, editNote, updatePosition, updateColor, updateTextColor, updateType, deleteNote } = useNoteMutations();
   const { order, bringToFront } = useZIndexManager(notes);
 
-  // Story 1.3: Handle adding note with optional position (for double-click)
-  const handleAddNote = useCallback((clickPositionX?: number, clickPositionY?: number) => {
+  // Story 1.3 & 1.5: Handle adding note with type selection and optional position (for double-click)
+  const handleAddNote = useCallback((type: 'note' | 'idea' | 'plan', clickPositionX?: number, clickPositionY?: number) => {
     const offset = (notes.length % 5) * 25;
     // Use clicked position or default to canvas center (0, 0) with offset
     const positionX = clickPositionX !== undefined ? clickPositionX : offset;
@@ -51,9 +53,8 @@ function App() {
 
     // Create note with single space (backend requires non-empty content)
     // The space will be selected on focus so user can immediately type over it
-    // AC #2: Card defaults to type 'note' with status 'active'
     addNote.mutate(
-      { content: " ", positionX, positionY, type: "note", status: "active" },
+      { content: " ", positionX, positionY, type, status: "active" },
       {
         onSuccess: (data) => {
           // Clear skeleton and set newNoteId to trigger auto-focus
@@ -77,7 +78,8 @@ function App() {
     const canvasX = (screenX - panPosition.x) / zoom;
     const canvasY = (screenY - panPosition.y) / zoom;
 
-    handleAddNote(canvasX, canvasY);
+    // Double-click defaults to 'note' type
+    handleAddNote('note', canvasX, canvasY);
   }, [panPosition, zoom, handleAddNote]);
 
   // Story 1.3: Keyboard shortcut ⌘N/Ctrl+N for new note
@@ -86,7 +88,7 @@ function App() {
       // mod+n: Cmd+N on Mac, Ctrl+N on Windows
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault();
-        handleAddNote(); // Create at center (default position)
+        handleAddNote('note'); // Create note at center (default position)
       }
     };
 
@@ -157,7 +159,7 @@ function App() {
   if (notes.length === 0 && !pendingNotePosition) {
     return (
       <div className="h-screen w-screen bg-background">
-        <EmptyState onAdd={() => handleAddNote()} />
+        <EmptyState onAdd={() => handleAddNote('note')} />
       </div>
     );
   } else {
@@ -181,29 +183,38 @@ function App() {
                 />
               )}
               {visibleNotes.map((note: Note) => {
-                return (
-                  <NoteCard
-                    id={note.id}
-                    key={note.id}
-                    positionX={note.positionX ?? 0}
-                    positionY={note.positionY ?? 0}
-                    backgroundColor={note.backgroundColor ?? "yellow"}
-                    textColor={note.textColor ?? "black"}
-                    content={note.content}
-                    type={note.type ?? "note"}
-                    isNew={note.id === newNoteId}
-                    onEdit={(id, newContent) =>
-                      editNote.mutateAsync({ id, payload: { content: newContent } })
-                    }
-                    onColorChange={(backgroundColor) => updateColor.mutate({id:note.id, backgroundColor})}
-                    onTextColorChange={(textColor) => updateTextColor.mutate({id:note.id, textColor})}
-                    onDelete={(id) => deleteNote.mutate(id)}
-                    zIndex={order[note.id] ?? 0}
-                    onBringToFront={() => bringToFront(note.id)}
-                    onDragEndSave={(id, positionX, positionY) => updatePosition.mutate({ id, positionX, positionY })}
-                    onNewNoteFocused={handleClearNewNote}
-                  />
-                );
+                // Story 1.6: Conditionally render card type based on note.type
+                const cardProps = {
+                  id: note.id,
+                  key: note.id,
+                  positionX: note.positionX ?? 0,
+                  positionY: note.positionY ?? 0,
+                  backgroundColor: note.backgroundColor ?? "yellow",
+                  textColor: note.textColor ?? "black",
+                  content: note.content,
+                  type: note.type ?? "note",
+                  isNew: note.id === newNoteId,
+                  onEdit: (id: string, newContent: string) =>
+                    editNote.mutateAsync({ id, payload: { content: newContent } }),
+                  onColorChange: (backgroundColor: string) => updateColor.mutate({id:note.id, backgroundColor}),
+                  onTextColorChange: (textColor: string) => updateTextColor.mutate({id:note.id, textColor}),
+                  onTypeChange: (type: 'note' | 'idea' | 'plan') => updateType.mutate({id: note.id, type}),
+                  onDelete: (id: string) => deleteNote.mutate(id),
+                  zIndex: order[note.id] ?? 0,
+                  onBringToFront: () => bringToFront(note.id),
+                  onDragEndSave: (id: string, positionX: number, positionY: number) =>
+                    updatePosition.mutate({ id, positionX, positionY }),
+                  onNewNoteFocused: handleClearNewNote,
+                };
+
+                // Render the appropriate card component based on type
+                if (note.type === 'idea') {
+                  return <IdeaCard {...cardProps} />;
+                } else if (note.type === 'plan') {
+                  return <PlanCard {...cardProps} />;
+                } else {
+                  return <NoteCard {...cardProps} />;
+                }
               })}
             </AnimatePresence>
           </div>
@@ -214,7 +225,7 @@ function App() {
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onResetHome={handleResetHome}
-          onAddNote={() => handleAddNote()}
+          onAddNote={handleAddNote}
           zoomMin={0.25}
           zoomMax={2}
         />

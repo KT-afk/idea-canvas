@@ -140,8 +140,39 @@ export function useNoteMutations() {
         queryClient.setQueryData(["notes"], context.previousNotes);
       }
     },
-    
+
   });
+
+  // Story 1.5: Type toggle with optimistic UI and error handling
+  const updateTypeMutation = useMutation({
+    mutationFn: ({ id, type }: { id: string; type: 'note' | 'idea' | 'plan' }) =>
+      updateNote(id, { type }),
+    onMutate: async ({ id, type }) => {
+      await queryClient.cancelQueries({ queryKey: ["notes"] });
+      const previousNotes = queryClient.getQueryData<Note[]>(["notes"]);
+
+      // Optimistically update cache with new type
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) => (note.id === id ? { ...note, type } : note))
+      );
+
+      return { previousNotes };
+    },
+    onError: (_err, _var, context) => {
+      // Story 1.5 AC: Rollback type and show error toast on failure
+      if (context?.previousNotes) {
+        queryClient.setQueryData(["notes"], context.previousNotes);
+      }
+      toast.error("Failed to update type");
+    },
+    onSettled: () => {
+      // Wait a tiny tick so all overlapping updates finish
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["notes"] });
+      }, 50);
+    },
+  });
+
   const deleteNoteMutation = useMutation({
     mutationFn: deleteNote,
     onSuccess: () => {
@@ -155,6 +186,7 @@ export function useNoteMutations() {
     updatePosition: updatePositionMutation,
     updateColor: updateColorMutation,
     updateTextColor: updateTextColorMutation,
+    updateType: updateTypeMutation,
     deleteNote: deleteNoteMutation,
   };
 }

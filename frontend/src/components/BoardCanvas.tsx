@@ -271,7 +271,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
       {/* Issue #13 fix: Background layer that captures drag for canvas panning */}
       <div
         ref={backgroundRef}
-        className="absolute inset-0 cursor-grab active:cursor-grabbing"
+        className="absolute inset-0 cursor-grab active:cursor-grabbing canvas-background"
         onPointerDown={(e) => {
           // Only start drag if clicking on background (not on children like notes)
           if (e.target === backgroundRef.current) {
