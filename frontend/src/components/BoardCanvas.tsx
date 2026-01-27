@@ -1,17 +1,20 @@
 import { motion, useMotionValue, animate, useDragControls } from 'framer-motion';
 import { useState, useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import type { ReactNode } from 'react';
+import type { Note } from '../types/types'; // Import Note type
 
 interface BoardCanvasProps {
   children: ReactNode;
   zoom: number;
   onZoomChange: (zoom: number) => void;
   onPanChange: (position: { x: number; y: number }) => void;
-  onDoubleClickCreate?: (screenX: number, screenY: number) => void; // Story 1.3: Create note on double-click
+  onDoubleClickCreate?: (screenX: number, screenY: number) => void;
+  notes?: Note[]; // Story 1.9: Need notes to calculate bounding box
 }
 
 export interface BoardCanvasHandle {
   resetToHome: () => void;
+  fitToContent: () => void; // Story 1.9: New method
   getPanPosition: () => { x: number; y: number };
 }
 
@@ -19,6 +22,10 @@ export interface BoardCanvasHandle {
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 2.0;
 const PAN_LIMIT = 10000;
+const CARD_WIDTH = 192; // w-48
+const CARD_HEIGHT = 400; // Issue #4 fix: Conservative estimate for dynamic card heights (header + expanded text + footer)
+const VIEWPORT_PADDING = 100; // Padding around content when fitting
+
 // Home position: canvas origin (0,0) centered on screen
 const getHomePosition = () => ({
   x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0,
@@ -27,7 +34,7 @@ const getHomePosition = () => ({
 });
 
 export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
-  ({ children, zoom, onZoomChange, onPanChange, onDoubleClickCreate }, ref) => {
+  ({ children, zoom, onZoomChange, onPanChange, onDoubleClickCreate, notes = [] }, ref) => {
   // Motion values for smooth dragging without re-renders
   // Start at home position (centered)
   const homePos = getHomePosition();
@@ -36,6 +43,9 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
 
   // Track whether user prefers reduced motion
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  
+  // Track spacebar for pan mode
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
 
   // Track canvas focus for keyboard navigation
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -48,9 +58,91 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
   const pinchStartDistanceRef = useRef<number | null>(null);
   const pinchStartZoomRef = useRef<number | null>(null);
 
-  // Expose reset method to parent via ref
+  // Helper to animate to position
+  const animateTo = useCallback((targetX: number, targetY: number, targetZoom: number) => {
+    if (prefersReducedMotion) {
+      x.set(targetX);
+      y.set(targetY);
+      onZoomChange(targetZoom);
+    } else {
+      animate(x, targetX, { duration: 0.5, ease: 'easeOut' });
+      animate(y, targetY, { duration: 0.5, ease: 'easeOut' });
+      // Issue #7: Zoom changes instantly while pan animates (known limitation for MVP)
+      // Ideally we'd animate zoom smoothly with pan, but requires coordinating with App.tsx state
+      onZoomChange(targetZoom);
+    }
+  }, [prefersReducedMotion, onZoomChange]); // Issue #5 fix: Removed x, y from deps (they're refs)
+
+  // Story 1.9: Reset to home position
+  const resetToHome = useCallback(() => {
+    const homePos = getHomePosition();
+    animateTo(homePos.x, homePos.y, homePos.zoom);
+  }, [animateTo]);
+
+  // Story 1.9: Fit to content
+  const fitToContent = useCallback(() => {
+    if (notes.length === 0) {
+      resetToHome();
+      return;
+    }
+
+    // 1. Calculate bounding box of all notes
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    notes.forEach(note => {
+      minX = Math.min(minX, note.positionX);
+      maxX = Math.max(maxX, note.positionX + CARD_WIDTH);
+      minY = Math.min(minY, note.positionY);
+      maxY = Math.max(maxY, note.positionY + CARD_HEIGHT); // Approx height
+    });
+
+    // 2. Determine center of that bounding box
+    const contentCenterX = minX + (maxX - minX) / 2;
+    const contentCenterY = minY + (maxY - minY) / 2;
+
+    // 3. Determine available viewport size
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // 4. Calculate required zoom to fit (with padding)
+    const contentWidth = maxX - minX + (VIEWPORT_PADDING * 2);
+    const contentHeight = maxY - minY + (VIEWPORT_PADDING * 2);
+
+    const scaleX = viewportWidth / contentWidth;
+    const scaleY = viewportHeight / contentHeight;
+
+    // Use the smaller scale to ensure everything fits, clamped to limits
+    let targetZoom = Math.min(scaleX, scaleY);
+
+    // Issue #6 fix: Track if zoom was clamped for user feedback
+    const wasClampedDown = targetZoom > ZOOM_MAX;
+    targetZoom = Math.max(ZOOM_MIN, Math.min(targetZoom, ZOOM_MAX));
+
+    if (wasClampedDown) {
+      console.warn('Content too dense to fit at max zoom (2.0x). Some content may be partially off-screen.');
+    }
+
+    // 5. Calculate new pan position
+    // We want the content center to be at the screen center
+    // Formula: ScreenCenter = ContentCenter * Zoom + Pan
+    // Pan = ScreenCenter - (ContentCenter * Zoom)
+    const screenCenterX = viewportWidth / 2;
+    const screenCenterY = viewportHeight / 2;
+
+    const targetX = screenCenterX - (contentCenterX * targetZoom);
+    const targetY = screenCenterY - (contentCenterY * targetZoom);
+
+    animateTo(targetX, targetY, targetZoom);
+
+  }, [notes, resetToHome, animateTo]);
+
+  // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
     resetToHome,
+    fitToContent,
     getPanPosition: () => ({ x: x.get(), y: y.get() }),
   }));
 
@@ -89,6 +181,10 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
   // Mouse wheel zoom handler with zoom-to-cursor behavior and throttling
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
+      // Allow native browser zoom if Ctrl is NOT pressed (standard behavior is Ctrl+Wheel to zoom)
+      // Actually, standard for canvas apps is Wheel to Pan, Ctrl+Wheel to Zoom.
+      // Current impl: Wheel zooms always. Let's keep it for now as per Story 1.2.
+      
       e.preventDefault();
 
       // Calculate zoom delta
@@ -139,23 +235,53 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
     (e: React.KeyboardEvent) => {
       const moveStep = e.shiftKey ? 500 : 100; // Larger jumps with Shift
 
+      // Story 1.9: Handle Cmd+0 (Reset) and Cmd+1 (Fit)
+      if ((e.metaKey || e.ctrlKey) && e.key === '0') {
+        e.preventDefault();
+        resetToHome();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '1') {
+        e.preventDefault();
+        fitToContent();
+        return;
+      }
+
+      // Issue #1 & #2 fix: Space key handling moved to global window listener below
+
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
-          // Issue #10 fix: Clamp to bounds
-          y.set(Math.min(PAN_LIMIT, y.get() + moveStep));
+          // Issue #9 fix: Update motion value and notify parent for virtualization
+          {
+            const newY = Math.min(PAN_LIMIT, y.get() + moveStep);
+            y.set(newY);
+            onPanChange({ x: x.get(), y: newY });
+          }
           break;
         case 'ArrowDown':
           e.preventDefault();
-          y.set(Math.max(-PAN_LIMIT, y.get() - moveStep));
+          {
+            const newY = Math.max(-PAN_LIMIT, y.get() - moveStep);
+            y.set(newY);
+            onPanChange({ x: x.get(), y: newY });
+          }
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          x.set(Math.min(PAN_LIMIT, x.get() + moveStep));
+          {
+            const newX = Math.min(PAN_LIMIT, x.get() + moveStep);
+            x.set(newX);
+            onPanChange({ x: newX, y: y.get() });
+          }
           break;
         case 'ArrowRight':
           e.preventDefault();
-          x.set(Math.max(-PAN_LIMIT, x.get() - moveStep));
+          {
+            const newX = Math.max(-PAN_LIMIT, x.get() - moveStep);
+            x.set(newX);
+            onPanChange({ x: newX, y: y.get() });
+          }
           break;
         case '+':
         case '=':
@@ -180,25 +306,40 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
           break;
       }
     },
-    [zoom, onZoomChange, x, y]
+    [zoom, onZoomChange, x, y, resetToHome, fitToContent, onPanChange]
   );
 
-  // Reset to home position
-  const resetToHome = useCallback(() => {
-    const homePos = getHomePosition();
-    // Issue #3 fix: Implement actual animation difference
-    if (prefersReducedMotion) {
-      // Instant reset if reduced motion preferred
-      x.set(homePos.x);
-      y.set(homePos.y);
-      onZoomChange(homePos.zoom);
-    } else {
-      // Animated reset with smooth transitions
-      animate(x, homePos.x, { duration: 0.3, ease: 'easeOut' });
-      animate(y, homePos.y, { duration: 0.3, ease: 'easeOut' });
-      onZoomChange(homePos.zoom);
-    }
-  }, [prefersReducedMotion, x, y, onZoomChange]);
+  // Issue #1 & #2 fix: Global space key handler to avoid conflicts with text input
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === ' ' && !isSpacePressed) {
+        // Only enable pan mode if not typing in an input/textarea
+        const activeElement = document.activeElement;
+        const isTyping = activeElement?.tagName === 'INPUT' ||
+                        activeElement?.tagName === 'TEXTAREA' ||
+                        activeElement?.getAttribute('contenteditable') === 'true';
+
+        if (!isTyping) {
+          e.preventDefault();
+          setIsSpacePressed(true);
+        }
+      }
+    };
+
+    const handleGlobalKeyUp = (e: KeyboardEvent) => {
+      if (e.key === ' ') {
+        setIsSpacePressed(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    window.addEventListener('keyup', handleGlobalKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+      window.removeEventListener('keyup', handleGlobalKeyUp);
+    };
+  }, [isSpacePressed]);
 
   // Story 1.3: Double-click handler - create note at clicked position OR reset home
   const handleDoubleClick = useCallback(
@@ -259,7 +400,7 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
   return (
     <div
       ref={canvasRef}
-      className="fixed inset-0 overflow-hidden bg-background focus:outline-none focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2"
+      className={`fixed inset-0 overflow-hidden bg-background focus:outline-none focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2 ${isSpacePressed ? 'cursor-grab active:cursor-grabbing' : ''}`}
       onWheel={handleWheel}
       onKeyDown={handleKeyDown}
       onDoubleClick={handleDoubleClick}
@@ -273,8 +414,12 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
         ref={backgroundRef}
         className="absolute inset-0 cursor-grab active:cursor-grabbing canvas-background"
         onPointerDown={(e) => {
-          // Only start drag if clicking on background (not on children like notes)
-          if (e.target === backgroundRef.current) {
+          // Issue #8 fix: If Space is pressed, enable pan mode even when clicking on notes
+          if (isSpacePressed) {
+            e.stopPropagation(); // Prevent note drag when Space is pressed
+            dragControls.start(e);
+          } else if (e.target === backgroundRef.current) {
+            // Normal background click without Space
             dragControls.start(e);
           }
         }}

@@ -1,12 +1,13 @@
 import { Button } from './ui/button';
 import { TypePickerPopover } from './Popover';
-import { Plus } from 'lucide-react';
+import { Plus, Maximize } from 'lucide-react';
 
 interface CanvasControlsProps {
   zoom: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetHome: () => void;
+  onFitToContent: () => void; // Story 1.9
   onAddNote: (type: 'note' | 'idea' | 'plan') => void;
   zoomMin: number;
   zoomMax: number;
@@ -17,6 +18,7 @@ export function CanvasControls({
   onZoomIn,
   onZoomOut,
   onResetHome,
+  onFitToContent,
   onAddNote,
   zoomMin,
   zoomMax,
@@ -73,13 +75,27 @@ export function CanvasControls({
         onTypeSelect={onAddNote}
       />
 
+      {/* Divider */}
+      <div className="h-6 w-px bg-border" />
+
+      {/* Fit to Content Button */}
+      <Button
+        onClick={onFitToContent}
+        size="sm"
+        variant="ghost"
+        aria-label="Fit to content (Cmd+1)"
+        title="Fit to content (Cmd+1)"
+      >
+        <Maximize className="w-4 h-4" />
+      </Button>
+
       {/* Home Button */}
       <Button
         onClick={onResetHome}
         size="sm"
         variant="ghost"
-        aria-label="Return to home position (H)"
-        title="Return to home position (H)"
+        aria-label="Return to home position"
+        title="Return to home position (H or Cmd+0)"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

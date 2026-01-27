@@ -117,6 +117,11 @@ function App() {
     canvasRef.current?.resetToHome();
   };
 
+  // Story 1.9: Handle "Fit to Content"
+  const handleFitToContent = () => {
+    canvasRef.current?.fitToContent();
+  };
+
   // Virtualization: Only render visible cards + buffer zone
   const visibleNotes = useMemo(() => {
     // Issue #6 fix: Larger buffer accounting for card size and zoom
@@ -172,6 +177,7 @@ function App() {
           onZoomChange={setZoom}
           onPanChange={setPanPosition}
           onDoubleClickCreate={handleCanvasDoubleClick}
+          notes={notes} // Story 1.9: Pass notes for "Fit to Content" calculation
         >
           <div ref={boardRef} className="relative w-full h-full">
             <AnimatePresence>
@@ -226,6 +232,7 @@ function App() {
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onResetHome={handleResetHome}
+          onFitToContent={handleFitToContent} // Story 1.9
           onAddNote={handleAddNote}
           zoomMin={0.25}
           zoomMax={2}
