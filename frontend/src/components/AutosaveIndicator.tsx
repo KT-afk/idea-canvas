@@ -19,6 +19,9 @@ export function AutosaveIndicator() {
   const showSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Track when "Saving..." was last shown (for minimum display duration)
+  const savingShownAtRef = useRef<number | null>(null);
+
   // Track if component is mounted for cleanup safety
   useEffect(() => {
     return () => {
@@ -96,8 +99,8 @@ export function AutosaveIndicator() {
     if (!wasSaving && isSaving) {
       clearAllTimeouts();
 
-      // Show "Saving..." immediately for user feedback
-      // (This also clears any previous error state)
+      // Show "Saving..." immediately and record when we showed it
+      savingShownAtRef.current = Date.now();
       setStatus('saving');
 
       return () => clearAllTimeouts();
@@ -107,15 +110,41 @@ export function AutosaveIndicator() {
     if (wasSaving && !isSaving && isOnline) {
       clearAllTimeouts();
 
-      // Show "Saved" immediately when mutation completes
-      setStatus('saved');
+      // Calculate how long "Saving..." has been shown
+      const savingDuration = savingShownAtRef.current
+        ? Date.now() - savingShownAtRef.current
+        : 0;
 
-      // Hide "Saved" after 2 seconds (unless new mutation starts)
-      hideSavedTimeoutRef.current = setTimeout(() => {
-        if (isMountedRef.current) {
-          setStatus('idle');
-        }
-      }, 2000);
+      // Minimum display time for "Saving..." is 200ms
+      // This ensures users see feedback even for very fast mutations
+      const MIN_SAVING_DISPLAY = 200;
+      const remainingTime = Math.max(0, MIN_SAVING_DISPLAY - savingDuration);
+
+      if (remainingTime > 0) {
+        // Wait for minimum display time before showing "Saved"
+        showSavedTimeoutRef.current = setTimeout(() => {
+          if (!isMountedRef.current) return;
+
+          setStatus('saved');
+
+          // Hide "Saved" after 2 seconds
+          hideSavedTimeoutRef.current = setTimeout(() => {
+            if (isMountedRef.current) {
+              setStatus('idle');
+            }
+          }, 2000);
+        }, remainingTime);
+      } else {
+        // Minimum time already elapsed, show "Saved" immediately
+        setStatus('saved');
+
+        // Hide "Saved" after 2 seconds
+        hideSavedTimeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current) {
+            setStatus('idle');
+          }
+        }, 2000);
+      }
 
       return () => clearAllTimeouts();
     }
