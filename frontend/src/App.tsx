@@ -9,9 +9,13 @@ import { NoteCard } from "./components/NoteCard";
 import { IdeaCard } from "./components/IdeaCard"; // Story 1.6
 import { PlanCard } from "./components/PlanCard"; // Story 1.6
 import { NoteCardSkeleton } from "./components/NoteCardSkeleton";
+import { NewBoardDialog } from "./components/NewBoardDialog"; // Story 3.1
+import { BoardSwitcher } from "./components/BoardSwitcher"; // Story 3.1
 import { useNoteMutations } from "./hooks/useNoteMutations";
+import { useBoardMutations } from "./hooks/useBoardMutations"; // Story 3.1
 import { useZIndexManager } from "./hooks/useZIndexManager";
 import { fetchNotes } from "./services/notesService";
+import { fetchBoards } from "./services/boardsService"; // Story 3.1
 import type { Note } from "./types/types";
 
 function App() {
@@ -39,8 +43,38 @@ function App() {
     queryFn: fetchNotes,
   });
 
-  const { addNote, editNote, updatePosition, updateColor, updateTextColor, updateType, deleteNote } = useNoteMutations();
+  // Story 3.1: Fetch all boards
+  const {
+    data: boards = [],
+  } = useQuery({
+    queryKey: ["boards"],
+    queryFn: fetchBoards,
+  });
+
+  // Story 3.1: Track current board (default to first board or null)
+  const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
+
+  // Story 3.1: Set default board when boards are loaded
+  useEffect(() => {
+    if (boards.length > 0 && !currentBoardId) {
+      setCurrentBoardId(boards[0].id);
+    }
+  }, [boards, currentBoardId]);
+
+  const { addNote, editNote, updatePosition, updateColor, updateTextColor, updateType, deleteNote, archiveNote, restoreNote } = useNoteMutations();
+  const { createBoard } = useBoardMutations(); // Story 3.1
   const { order, bringToFront } = useZIndexManager(notes);
+
+  // Story 2.3: Toggle to show/hide archived items
+  const [showArchived, setShowArchived] = useState(false);
+
+  // Story 3.1: New board dialog state
+  const [isNewBoardDialogOpen, setIsNewBoardDialogOpen] = useState(false);
+
+  // Issue #4: Calculate archived count for badge
+  const archivedCount = useMemo(() => {
+    return notes.filter(note => (note.status ?? 'active') === 'archived').length;
+  }, [notes]);
 
   // Story 1.3 & 1.5: Handle adding note with type selection and optional position (for double-click)
   const handleAddNote = useCallback((type: 'note' | 'idea' | 'plan', clickPositionX?: number, clickPositionY?: number) => {
@@ -104,6 +138,16 @@ function App() {
     }
   }, [newNoteId]);
 
+  // Story 3.1: Handle creating a new board and switch to it
+  const handleCreateBoard = useCallback((name: string) => {
+    createBoard.mutate(name, {
+      onSuccess: (newBoard) => {
+        // Story 3.1: Automatically switch to the newly created board
+        setCurrentBoardId(newBoard.id);
+      },
+    });
+  }, [createBoard]);
+
   // Zoom control handlers
   const handleZoomIn = () => {
     setZoom((prev) => Math.min(2, prev + 0.1));
@@ -142,15 +186,22 @@ function App() {
       maxY: ((-panY + windowHeight) / zoom) + buffer,
     };
 
-    // Filter notes within viewport bounds
-    return notes.filter(
-      (note: Note) =>
+    // Story 2.3: Filter by status (archived vs active) and viewport bounds
+    return notes.filter((note: Note) => {
+      // Issue #2 fix: Explicit default for status field
+      const noteStatus = note.status ?? 'active';
+      const statusMatch = showArchived ? true : noteStatus !== 'archived';
+
+      // Then filter by viewport bounds
+      const inViewport =
         note.positionX >= viewportBounds.minX &&
         note.positionX <= viewportBounds.maxX &&
         note.positionY >= viewportBounds.minY &&
-        note.positionY <= viewportBounds.maxY
-    );
-  }, [notes, zoom, panPosition]);
+        note.positionY <= viewportBounds.maxY;
+
+      return statusMatch && inViewport;
+    });
+  }, [notes, zoom, panPosition, showArchived]);
 
   // Handle loading and error states after hooks
   if (isLoading) {
@@ -161,8 +212,9 @@ function App() {
     return <div>Error loading notes.</div>;
   }
 
-  // Show empty state only if no notes AND no pending creation
-  if (notes.length === 0 && !pendingNotePosition) {
+  // Issue #1 fix: Show empty state only if no active notes AND no pending creation
+  const hasActiveNotes = notes.some(note => (note.status ?? 'active') !== 'archived');
+  if (!hasActiveNotes && !pendingNotePosition) {
     return (
       <div className="h-screen w-screen bg-background">
         <EmptyState onAdd={() => handleAddNote('note')} />
@@ -200,6 +252,7 @@ function App() {
                   textColor: note.textColor ?? "black",
                   content: note.content,
                   type: note.type ?? "note",
+                  status: note.status ?? "active", // Story 2.3
                   isNew: note.id === newNoteId,
                   onEdit: (id: string, newContent: string) =>
                     editNote.mutateAsync({ id, payload: { content: newContent } }),
@@ -207,6 +260,8 @@ function App() {
                   onTextColorChange: (textColor: string) => updateTextColor.mutate({id:note.id, textColor}),
                   onTypeChange: (type: 'note' | 'idea' | 'plan') => updateType.mutate({id: note.id, type}),
                   onDelete: (id: string) => deleteNote.mutate(id),
+                  onArchive: (id: string) => archiveNote.mutate(id), // Story 2.3
+                  onRestore: (id: string) => restoreNote.mutate(id), // Story 2.3
                   zIndex: order[note.id] ?? 0,
                   onBringToFront: () => bringToFront(note.id),
                   onDragEndSave: (id: string, positionX: number, positionY: number) =>
@@ -227,6 +282,15 @@ function App() {
           </div>
         </BoardCanvas>
 
+        {/* Story 3.1: Board Switcher - Top Left */}
+        <div className="fixed top-4 left-4 z-10">
+          <BoardSwitcher
+            boards={boards}
+            currentBoardId={currentBoardId}
+            onBoardChange={setCurrentBoardId}
+          />
+        </div>
+
         <CanvasControls
           zoom={zoom}
           onZoomIn={handleZoomIn}
@@ -234,12 +298,24 @@ function App() {
           onResetHome={handleResetHome}
           onFitToContent={handleFitToContent} // Story 1.9
           onAddNote={handleAddNote}
+          showArchived={showArchived} // Story 2.3
+          onToggleArchived={() => setShowArchived(!showArchived)} // Story 2.3
+          archivedCount={archivedCount} // Issue #4
+          onNewBoard={() => setIsNewBoardDialogOpen(true)} // Story 3.1
           zoomMin={0.25}
           zoomMax={2}
         />
 
         {/* Story 1.8: Auto-save indicator */}
         <AutosaveIndicator />
+
+        {/* Story 3.1: New Board Dialog */}
+        <NewBoardDialog
+          open={isNewBoardDialogOpen}
+          onOpenChange={setIsNewBoardDialogOpen}
+          onCreateBoard={handleCreateBoard}
+          isLoading={createBoard.isPending}
+        />
       </>
     );
   }
