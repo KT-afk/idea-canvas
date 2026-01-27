@@ -15,12 +15,8 @@ export function AutosaveIndicator() {
   const prevMutatingRef = useRef(0);
   const isMountedRef = useRef(true);
 
-  // Refs for debouncing timeouts
-  const showSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hideSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Track when "Saving..." was last shown (for minimum display duration)
-  const savingShownAtRef = useRef<number | null>(null);
+  // Ref for hide timeout
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Track if component is mounted for cleanup safety
   useEffect(() => {
@@ -76,81 +72,42 @@ export function AutosaveIndicator() {
     // Update ref for next render
     prevMutatingRef.current = isMutating;
 
-    // Clear all pending timeouts when mutation state changes
-    const clearAllTimeouts = () => {
-      if (showSavedTimeoutRef.current) {
-        clearTimeout(showSavedTimeoutRef.current);
-        showSavedTimeoutRef.current = null;
-      }
-      if (hideSavedTimeoutRef.current) {
-        clearTimeout(hideSavedTimeoutRef.current);
-        hideSavedTimeoutRef.current = null;
-      }
-    };
+    // Clear pending hide timeout
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
 
     // Handle offline state (highest priority)
     if (!isOnline) {
-      clearAllTimeouts();
       setStatus('offline');
       return;
     }
 
     // New mutation started (wasn't saving before, is saving now)
     if (!wasSaving && isSaving) {
-      clearAllTimeouts();
-
-      // Show "Saving..." immediately and record when we showed it
-      savingShownAtRef.current = Date.now();
       setStatus('saving');
-
-      return () => clearAllTimeouts();
+      return;
     }
 
     // Mutation completed (was saving before, not saving now)
     if (wasSaving && !isSaving && isOnline) {
-      clearAllTimeouts();
+      // Show "Saved" immediately
+      setStatus('saved');
 
-      // Calculate how long "Saving..." has been shown
-      const savingDuration = savingShownAtRef.current
-        ? Date.now() - savingShownAtRef.current
-        : 0;
+      // Hide after 2 seconds
+      hideTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          setStatus('idle');
+        }
+      }, 2000);
 
-      // Minimum display time for "Saving..." is 200ms
-      // This ensures users see feedback even for very fast mutations
-      const MIN_SAVING_DISPLAY = 200;
-      const remainingTime = Math.max(0, MIN_SAVING_DISPLAY - savingDuration);
-
-      if (remainingTime > 0) {
-        // Wait for minimum display time before showing "Saved"
-        showSavedTimeoutRef.current = setTimeout(() => {
-          if (!isMountedRef.current) return;
-
-          setStatus('saved');
-
-          // Hide "Saved" after 2 seconds
-          hideSavedTimeoutRef.current = setTimeout(() => {
-            if (isMountedRef.current) {
-              setStatus('idle');
-            }
-          }, 2000);
-        }, remainingTime);
-      } else {
-        // Minimum time already elapsed, show "Saved" immediately
-        setStatus('saved');
-
-        // Hide "Saved" after 2 seconds
-        hideSavedTimeoutRef.current = setTimeout(() => {
-          if (isMountedRef.current) {
-            setStatus('idle');
-          }
-        }, 2000);
-      }
-
-      return () => clearAllTimeouts();
+      return () => {
+        if (hideTimeoutRef.current) {
+          clearTimeout(hideTimeoutRef.current);
+        }
+      };
     }
-
-    // Cleanup function
-    return () => clearAllTimeouts();
   }, [isMutating, isOnline]); // Removed status from dependencies - using ref instead
 
   // Handle retry
