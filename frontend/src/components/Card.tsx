@@ -3,6 +3,17 @@ import { motion, useDragControls, useMotionValue } from "framer-motion";
 import { ClipboardList, Lightbulb, PaintBucket, StickyNote, Type, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ColorPickerPopover } from "./Popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "./ui/alert-dialog";
 
 // Story 1.4: Named constants for keyboard movement (replaces magic numbers)
 const KEYBOARD_STEP_NORMAL = 10;
@@ -290,13 +301,34 @@ export function Card({
         />
         <ColorPickerPopover icon={Type} selectedColor={textColor} onColorChange={onTextColorChange} />
       </div>
-      <button
-        onClick={() => onDelete(id)}
-        className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center hover:text-red-600 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none transition-colors z-10"
-        aria-label="Delete note"
-      >
-        <X className="w-5 h-5" />
-      </button>
+      {/* Story 2.2: Delete confirmation dialog */}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <button
+            className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center hover:text-red-600 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none transition-colors z-10"
+            aria-label="Delete note"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this {type}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your {type}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onDelete(id)}
+              className="bg-red-600 hover:bg-red-700 focus-visible:ring-red-500"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="h-px bg-black/15 mb-4 mt-8 -mx-4" />
 
