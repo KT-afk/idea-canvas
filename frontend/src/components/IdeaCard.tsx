@@ -7,7 +7,7 @@ export function IdeaCard(props: Readonly<CardProps>) {
       {...props}
       customClassName="
         idea-card
-        border-l-4 border-l-dashed border-l-purple-400
+        border-l-4 border-l-dashed border-l-black/20
         rounded-l-lg
         relative
         before:content-['']
@@ -18,7 +18,7 @@ export function IdeaCard(props: Readonly<CardProps>) {
         before:w-[6px]
         before:bg-gradient-to-b
         before:from-transparent
-        before:via-purple-300
+        before:via-black/10
         before:to-transparent
         before:opacity-50
       "

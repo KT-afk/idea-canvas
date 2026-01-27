@@ -3,7 +3,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { getColorClass } from "@/utilities/utils";
+import { COLOR_KEYS, getColorClass, isLightColor } from "@/utilities/utils";
 import { Check, ClipboardList, Lightbulb, StickyNote } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
@@ -12,11 +12,27 @@ interface PopoverDemoProps{
     icon: LucideIcon;
     selectedColor: string; // Story 1.7: Indicate selected color
     onColorChange: (color: string) => void;
+    // Optional: if provided, this popover controls background color and can auto-update text color
+    onTextColorChange?: (color: string) => void;
 }
-export function ColorPickerPopover({icon: Icon, selectedColor, onColorChange}:Readonly<PopoverDemoProps>){
-    const colorsList = ["yellow", "red", "blue", "green", "purple", "orange", "pink", "teal", "indigo", "lime", "rose", "cyan", "amber", "emerald", "violet", "fuchsia", "classicRed", "classicBlue", "classicGreen", "white", "black", "gray"]
-  return (
-    <Popover>
+export function ColorPickerPopover({icon: Icon, selectedColor, onColorChange, onTextColorChange}:Readonly<PopoverDemoProps>){
+    const [open, setOpen] = useState(false);
+
+    const handleColorSelect = (color: string) => {
+        onColorChange(color);
+        
+        // If this is a background picker (implied by presence of onTextColorChange or context),
+        // and we have a way to set text color, apply auto-contrast
+        if (onTextColorChange) {
+             const newTextColor = isLightColor(color) ? 'black' : 'white';
+             onTextColorChange(newTextColor);
+        }
+        
+        setOpen(false);
+    }
+
+    return (
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button className="top-2 left-2 hover:opacity-70 transition-opacity p-1">
           <Icon className="w-5 h-5" />
@@ -26,17 +42,17 @@ export function ColorPickerPopover({icon: Icon, selectedColor, onColorChange}:Re
       </PopoverTrigger>
       <PopoverContent className="w-auto h-auto p-2">
         <div className="flex gap-2 flex-wrap max-w-[200px]">
-            {colorsList.map((color: string) => {
+            {COLOR_KEYS.map((color: string) => {
                 const isSelected = color === selectedColor;
-                // Determine checkmark color based on background brightness
-                const checkColor = ['white', 'yellow', 'lime', 'cyan', 'teal'].includes(color) ? 'black' : 'white';
+                // Use centralized helper for contrast
+                const checkColor = isLightColor(color) ? 'black' : 'white';
                 
                 return (
                     <button 
                         key={color} 
                         style={{backgroundColor: getColorClass(color)}} 
                         className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-primary focus-visible:outline-none ${isSelected ? 'ring-2 ring-offset-1 ring-primary' : ''}`} 
-                        onClick={() => onColorChange(color)}
+                        onClick={() => handleColorSelect(color)}
                         aria-label={`Select ${color}`}
                         aria-selected={isSelected}
                     >
