@@ -55,7 +55,12 @@ export async function updateNote(id: string, payload: Partial<Pick<Note, "conten
   });
   if (!res.ok) throw new Error("Failed to update note");
   const data = await res.json();
-  return data.data;
+  // Ensure positions are numbers (consistent with fetchNotes and createNote)
+  return {
+    ...data.data,
+    positionX: Number(data.data.positionX),
+    positionY: Number(data.data.positionY),
+  };
 }
 
 // ✅ Delete note
