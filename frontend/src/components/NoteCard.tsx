@@ -17,7 +17,8 @@ export function NoteCard(props: Readonly<CardProps>) {
         before:w-2
         before:h-2
         before:rounded-full
-        before:bg-black/30
+        before:bg-gray-700
+        before:shadow-[0_0_0_1.5px_white]
         before:z-[5]
       "
     />
