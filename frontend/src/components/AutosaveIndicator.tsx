@@ -1,5 +1,5 @@
 import { Check, CloudOff, Loader2, RotateCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 
 type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
@@ -7,15 +7,31 @@ type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
 export function AutosaveIndicator() {
   const [status, setStatus] = useState<AutosaveStatus>('idle');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [lastError, setLastError] = useState<Error | null>(null);
+
   const isMutating = useIsMutating(); // Count of active mutations
   const queryClient = useQueryClient();
+
+  // Refs for tracking state transitions
+  const prevMutatingRef = useRef(0);
+  const isMountedRef = useRef(true);
+
+  // Refs for debouncing timeouts
+  const showSavingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hideSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Track if component is mounted for cleanup safety
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Monitor online/offline status
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      // When coming back online, TanStack Query will auto-retry failed mutations
+      // TanStack Query will auto-retry failed mutations when back online
     };
     const handleOffline = () => {
       setIsOnline(false);
@@ -35,45 +51,106 @@ export function AutosaveIndicator() {
     const mutationCache = queryClient.getMutationCache();
 
     const unsubscribe = mutationCache.subscribe((event) => {
-      if (event?.type === 'updated' && event.mutation) {
-        const mutation = event.mutation;
+      if (!isMountedRef.current || !event?.mutation) return;
 
-        if (mutation.state.status === 'error') {
-          setLastError(mutation.state.error as Error);
-          setStatus('error');
-        }
+      const mutation = event.mutation;
+
+      // Set error state when mutation fails
+      // Main state machine (below) will clear this when new mutations start
+      if (mutation.state.status === 'error') {
+        setStatus('error');
       }
     });
 
     return unsubscribe;
   }, [queryClient]);
 
-  // Update status based on mutation state and online status
+  // Main state machine: Handle mutation state transitions
+  // FIXED: Uses ref to track previous value, removing status from dependencies
   useEffect(() => {
+    const wasSaving = prevMutatingRef.current > 0;
+    const isSaving = isMutating > 0;
+
+    // Update ref for next render
+    prevMutatingRef.current = isMutating;
+
+    // Clear all pending timeouts when mutation state changes
+    const clearAllTimeouts = () => {
+      if (showSavingTimeoutRef.current) {
+        clearTimeout(showSavingTimeoutRef.current);
+        showSavingTimeoutRef.current = null;
+      }
+      if (showSavedTimeoutRef.current) {
+        clearTimeout(showSavedTimeoutRef.current);
+        showSavedTimeoutRef.current = null;
+      }
+      if (hideSavedTimeoutRef.current) {
+        clearTimeout(hideSavedTimeoutRef.current);
+        hideSavedTimeoutRef.current = null;
+      }
+    };
+
+    // Handle offline state (highest priority)
     if (!isOnline) {
+      clearAllTimeouts();
       setStatus('offline');
       return;
     }
 
-    if (isMutating > 0) {
-      setStatus('saving');
-      setLastError(null); // Clear previous errors while saving
-    } else if (status === 'saving' && isOnline) {
-      // Mutation just completed successfully - show "Saved" briefly
-      setStatus('saved');
-      const timeout = setTimeout(() => {
+    // New mutation started (wasn't saving before, is saving now)
+    if (!wasSaving && isSaving) {
+      clearAllTimeouts();
+
+      // Clear any previous error state when new mutation starts
+      if (status === 'error') {
         setStatus('idle');
-      }, 2000);
-      return () => clearTimeout(timeout);
+      }
+
+      // Debounce "Saving..." indicator - only show if mutation takes >300ms
+      // (prevents flashing for fast operations)
+      showSavingTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          setStatus('saving');
+        }
+      }, 300);
+
+      return () => clearAllTimeouts();
     }
-  }, [isMutating, isOnline, status]);
+
+    // Mutation completed (was saving before, not saving now)
+    if (wasSaving && !isSaving && isOnline) {
+      clearAllTimeouts();
+
+      // If we never showed "Saving..." (mutation was <300ms), skip straight to idle
+      // Otherwise, show "Saved" briefly
+
+      // Wait 1 second to see if more mutations are coming
+      // (prevents flashing during rapid changes like typing)
+      showSavedTimeoutRef.current = setTimeout(() => {
+        if (!isMountedRef.current) return;
+
+        setStatus('saved');
+
+        // Hide "Saved" after 2 seconds
+        hideSavedTimeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current) {
+            setStatus('idle');
+          }
+        }, 2000);
+      }, 1000);
+
+      return () => clearAllTimeouts();
+    }
+
+    // Cleanup function
+    return () => clearAllTimeouts();
+  }, [isMutating, isOnline]); // Removed status from dependencies - using ref instead
 
   // Handle retry
   const handleRetry = () => {
-    // TanStack Query will auto-retry, but we can manually invalidate queries
+    // Invalidate queries to trigger refetch
     queryClient.invalidateQueries({ queryKey: ["notes"] });
     setStatus('idle');
-    setLastError(null);
   };
 
   // Don't render when idle
