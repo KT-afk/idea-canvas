@@ -55,17 +55,19 @@ export function useNoteMutations() {
       );
       return { previousNotes };
     },
+    onSuccess: (updatedNote, { id }) => {
+      // Update cache with server response to ensure consistency
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) =>
+          note.id === id ? { ...note, ...updatedNote } : note
+        )
+      );
+    },
     onError: (_err, _var, context) => {
       if (context?.previousNotes) {
         queryClient.setQueryData(["notes"], context.previousNotes);
       }
-    },
-    onSettled: () => {
-      // Don't refetch immediately.
-      // Wait a tiny tick so all overlapping updates finish.
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["notes"] });
-      }, 50);
+      toast.error("Failed to save changes");
     },
   });
 
@@ -87,19 +89,19 @@ export function useNoteMutations() {
 
       return { previousNotes };
     },
+    onSuccess: (updatedNote, { id }) => {
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) =>
+          note.id === id ? { ...note, ...updatedNote } : note
+        )
+      );
+    },
     onError: (_err, _var, context) => {
       // Story 1.4 AC#5: Rollback position and show error toast after retries exhausted
       if (context?.previousNotes) {
         queryClient.setQueryData(["notes"], context.previousNotes);
       }
       toast.error("Failed to save position");
-    },
-    onSettled: () => {
-      // Don't refetch immediately.
-      // Wait a tiny tick so all overlapping updates finish.
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["notes"] });
-      }, 50);
     },
   });
   const updateColorMutation = useMutation({
@@ -115,12 +117,19 @@ export function useNoteMutations() {
 
       return { previousNotes };
     },
+    onSuccess: (updatedNote, { id }) => {
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) =>
+          note.id === id ? { ...note, ...updatedNote } : note
+        )
+      );
+    },
     onError: (_err, _var, context) => {
       if (context?.previousNotes) {
         queryClient.setQueryData(["notes"], context.previousNotes);
       }
+      toast.error("Failed to update color");
     },
-    
   });
   const updateTextColorMutation = useMutation({
     mutationFn: ({ id, textColor }: { id: string; textColor: string }) =>
@@ -135,12 +144,19 @@ export function useNoteMutations() {
 
       return { previousNotes };
     },
+    onSuccess: (updatedNote, { id }) => {
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) =>
+          note.id === id ? { ...note, ...updatedNote } : note
+        )
+      );
+    },
     onError: (_err, _var, context) => {
       if (context?.previousNotes) {
         queryClient.setQueryData(["notes"], context.previousNotes);
       }
+      toast.error("Failed to update text color");
     },
-
   });
 
   // Story 1.5: Type toggle with optimistic UI and error handling
@@ -158,18 +174,19 @@ export function useNoteMutations() {
 
       return { previousNotes };
     },
+    onSuccess: (updatedNote, { id }) => {
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) =>
+          note.id === id ? { ...note, ...updatedNote } : note
+        )
+      );
+    },
     onError: (_err, _var, context) => {
       // Story 1.5 AC: Rollback type and show error toast on failure
       if (context?.previousNotes) {
         queryClient.setQueryData(["notes"], context.previousNotes);
       }
       toast.error("Failed to update type");
-    },
-    onSettled: () => {
-      // Wait a tiny tick so all overlapping updates finish
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["notes"] });
-      }, 50);
     },
   });
 
