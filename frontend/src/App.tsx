@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AutosaveIndicator } from "./components/AutosaveIndicator"; // Story 1.8
 import { BoardCanvas, type BoardCanvasHandle } from "./components/BoardCanvas";
 import { CanvasControls } from "./components/CanvasControls";
 import { EmptyState } from "./components/EmptyState";
@@ -229,6 +230,9 @@ function App() {
           zoomMin={0.25}
           zoomMax={2}
         />
+
+        {/* Story 1.8: Auto-save indicator */}
+        <AutosaveIndicator />
       </>
     );
   }
