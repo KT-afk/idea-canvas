@@ -1,6 +1,6 @@
 import { getColorClass } from "@/utilities/utils";
 import { motion, useDragControls, useMotionValue } from "framer-motion";
-import { ClipboardList, Lightbulb, PaintBucket, StickyNote, Type, X } from "lucide-react";
+import { Archive, ClipboardList, Lightbulb, PaintBucket, RotateCcw, StickyNote, Type, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ColorPickerPopover } from "./Popover";
 import {
@@ -29,6 +29,7 @@ export interface CardProps {
   textColor: string;
   zIndex: number;
   type?: 'note' | 'idea' | 'plan'; // Story 1.3: Card type
+  status?: 'active' | 'archived' | 'graduated'; // Story 2.3: Card status
   isNew?: boolean; // Story 1.3: Flag for newly created notes to trigger auto-focus
   customClassName?: string; // Story 1.6: Type-specific styling classes
   onColorChange: (backgroundColor: string) => void;
@@ -36,6 +37,8 @@ export interface CardProps {
   onTypeChange: (type: 'note' | 'idea' | 'plan') => void; // Story 1.5: Type toggle
   onEdit: (id: string, newContent: string) => void;
   onDelete: (id: string) => void;
+  onArchive: (id: string) => void; // Story 2.3: Archive card
+  onRestore: (id: string) => void; // Story 2.3: Restore card
   onBringToFront: (id: string) => void;
   onDragEndSave: (id: string, positionX: number, positionY: number) => void;
   onNewNoteFocused?: (id: string) => void; // Story 1.3: Callback when new note receives focus
@@ -51,6 +54,7 @@ export function Card({
   textColor,
   zIndex,
   type = 'note',
+  status = 'active',
   isNew = false,
   customClassName = '',
   onColorChange,
@@ -58,6 +62,8 @@ export function Card({
   onTypeChange,
   onEdit,
   onDelete,
+  onArchive,
+  onRestore,
   onBringToFront,
   onDragEndSave,
   onNewNoteFocused,
@@ -248,6 +254,8 @@ export function Card({
         color: getColorClass(textColor),
         pointerEvents: "auto", // Issue #13 fix: Ensure notes capture pointer events
         cursor: isDragging ? 'grabbing' : undefined, // Story 1.4: Cursor during drag
+        opacity: status === 'archived' ? 0.6 : 1, // Story 2.3: Grayed out for archived
+        filter: status === 'archived' ? 'grayscale(80%)' : undefined, // Issue #6: Stronger grayscale for clearer distinction
       }}
       drag
       dragControls={dragControls}
@@ -346,6 +354,27 @@ export function Card({
         placeholder="Type something..."
         aria-label="Note content"
       />
+
+      {/* Story 2.3: Archive/Restore button - Issue #5: Hide for new/empty notes */}
+      {(status === 'archived' || (!isNew && editableText.trim() !== '')) && (
+        <button
+          onClick={() => status === 'archived' ? onRestore(id) : onArchive(id)}
+          className="absolute bottom-2 left-2 flex items-center gap-1 text-xs opacity-60 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none transition-opacity rounded px-1.5 py-0.5 z-10 cursor-pointer"
+          aria-label={status === 'archived' ? 'Restore this item' : 'Archive this item'}
+        >
+          {status === 'archived' ? (
+            <>
+              <RotateCcw className="w-3 h-3" />
+              <span>Restore</span>
+            </>
+          ) : (
+            <>
+              <Archive className="w-3 h-3" />
+              <span>Archive</span>
+            </>
+          )}
+        </button>
+      )}
 
       {/* Story 1.5: Interactive type toggle button - placed after textarea for proper tab order */}
       <button

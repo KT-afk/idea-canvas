@@ -15,3 +15,12 @@ export type Note = {
   createdAt?: string;
   updatedAt?: string;
 };
+
+// Story 3.1: Board type
+export type Board = {
+  id: string;
+  name: string;
+  userId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};

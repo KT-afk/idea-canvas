@@ -47,7 +47,7 @@ export async function createNote(note: {
 }
 
 // ✅ Update note content or position
-export async function updateNote(id: string, payload: Partial<Pick<Note, "content" | "positionX" | "positionY" | "backgroundColor" | "textColor" | "type" >>): Promise<Note> {
+export async function updateNote(id: string, payload: Partial<Pick<Note, "content" | "positionX" | "positionY" | "backgroundColor" | "textColor" | "type" | "status">>): Promise<Note> {
   const res = await fetch(`${API_URL}/api/notes/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

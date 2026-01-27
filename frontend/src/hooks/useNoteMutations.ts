@@ -197,6 +197,72 @@ export function useNoteMutations() {
     },
   });
 
+  // Story 2.3: Archive note with optimistic UI and rollback
+  const archiveNoteMutation = useMutation({
+    mutationFn: (id: string) => updateNote(id, { status: 'archived' }),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["notes"] });
+      const previousNotes = queryClient.getQueryData<Note[]>(["notes"]);
+
+      // Optimistically update cache
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) =>
+          note.id === id ? { ...note, status: 'archived' as const } : note
+        )
+      );
+
+      return { previousNotes };
+    },
+    onSuccess: (updatedNote, id) => {
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) =>
+          note.id === id ? { ...note, ...updatedNote } : note
+        )
+      );
+      // Issue #3 fix: Show toast notification when item is archived
+      toast.success("Item archived. Click the archive icon to view archived items.");
+    },
+    onError: (_err, _var, context) => {
+      if (context?.previousNotes) {
+        queryClient.setQueryData(["notes"], context.previousNotes);
+      }
+      toast.error("Failed to archive");
+    },
+  });
+
+  // Story 2.3: Restore note with optimistic UI and rollback
+  const restoreNoteMutation = useMutation({
+    mutationFn: (id: string) => updateNote(id, { status: 'active' }),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["notes"] });
+      const previousNotes = queryClient.getQueryData<Note[]>(["notes"]);
+
+      // Optimistically update cache
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) =>
+          note.id === id ? { ...note, status: 'active' as const } : note
+        )
+      );
+
+      return { previousNotes };
+    },
+    onSuccess: (updatedNote, id) => {
+      queryClient.setQueryData<Note[]>(["notes"], (oldNotes = []) =>
+        oldNotes.map((note) =>
+          note.id === id ? { ...note, ...updatedNote } : note
+        )
+      );
+      // Issue #3 fix: Show toast notification when item is restored
+      toast.success("Item restored");
+    },
+    onError: (_err, _var, context) => {
+      if (context?.previousNotes) {
+        queryClient.setQueryData(["notes"], context.previousNotes);
+      }
+      toast.error("Failed to restore");
+    },
+  });
+
   return {
     addNote: addNoteMutation,
     editNote: editNoteMutation,
@@ -205,5 +271,7 @@ export function useNoteMutations() {
     updateTextColor: updateTextColorMutation,
     updateType: updateTypeMutation,
     deleteNote: deleteNoteMutation,
+    archiveNote: archiveNoteMutation,
+    restoreNote: restoreNoteMutation,
   };
 }

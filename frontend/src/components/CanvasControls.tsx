@@ -1,6 +1,6 @@
 import { Button } from './ui/button';
 import { TypePickerPopover } from './Popover';
-import { Plus, Maximize } from 'lucide-react';
+import { Plus, Maximize, Archive, FolderPlus } from 'lucide-react';
 
 interface CanvasControlsProps {
   zoom: number;
@@ -9,6 +9,10 @@ interface CanvasControlsProps {
   onResetHome: () => void;
   onFitToContent: () => void; // Story 1.9
   onAddNote: (type: 'note' | 'idea' | 'plan') => void;
+  showArchived: boolean; // Story 2.3
+  onToggleArchived: () => void; // Story 2.3
+  archivedCount: number; // Issue #4: Show count of archived items
+  onNewBoard: () => void; // Story 3.1: Create new board
   zoomMin: number;
   zoomMax: number;
 }
@@ -20,6 +24,10 @@ export function CanvasControls({
   onResetHome,
   onFitToContent,
   onAddNote,
+  showArchived,
+  onToggleArchived,
+  archivedCount,
+  onNewBoard,
   zoomMin,
   zoomMax,
 }: CanvasControlsProps) {
@@ -69,11 +77,42 @@ export function CanvasControls({
       {/* Divider */}
       <div className="h-6 w-px bg-border" />
 
+      {/* Story 3.1: New Board Button */}
+      <Button
+        onClick={onNewBoard}
+        size="sm"
+        variant="ghost"
+        aria-label="Create new board"
+        title="Create new board"
+      >
+        <FolderPlus className="w-4 h-4" />
+      </Button>
+
       {/* Type Picker Button - Prominent purple styling */}
       <TypePickerPopover
         icon={Plus}
         onTypeSelect={onAddNote}
       />
+
+      {/* Divider */}
+      <div className="h-6 w-px bg-border" />
+
+      {/* Story 2.3: Toggle Archived Button - Issue #4: Show count */}
+      <Button
+        onClick={onToggleArchived}
+        size="sm"
+        variant={showArchived ? "default" : "ghost"}
+        aria-label={showArchived ? "Hide archived items" : `Show archived items (${archivedCount})`}
+        title={showArchived ? "Hide archived items" : `Show archived items (${archivedCount})`}
+        className="relative"
+      >
+        <Archive className="w-4 h-4" />
+        {archivedCount > 0 && !showArchived && (
+          <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center">
+            {archivedCount > 9 ? '9+' : archivedCount}
+          </span>
+        )}
+      </Button>
 
       {/* Divider */}
       <div className="h-6 w-px bg-border" />
