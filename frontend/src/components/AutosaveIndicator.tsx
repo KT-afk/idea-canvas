@@ -16,7 +16,6 @@ export function AutosaveIndicator() {
   const isMountedRef = useRef(true);
 
   // Refs for debouncing timeouts
-  const showSavingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -76,10 +75,6 @@ export function AutosaveIndicator() {
 
     // Clear all pending timeouts when mutation state changes
     const clearAllTimeouts = () => {
-      if (showSavingTimeoutRef.current) {
-        clearTimeout(showSavingTimeoutRef.current);
-        showSavingTimeoutRef.current = null;
-      }
       if (showSavedTimeoutRef.current) {
         clearTimeout(showSavedTimeoutRef.current);
         showSavedTimeoutRef.current = null;
@@ -106,13 +101,8 @@ export function AutosaveIndicator() {
         setStatus('idle');
       }
 
-      // Debounce "Saving..." indicator - only show if mutation takes >300ms
-      // (prevents flashing for fast operations)
-      showSavingTimeoutRef.current = setTimeout(() => {
-        if (isMountedRef.current) {
-          setStatus('saving');
-        }
-      }, 300);
+      // Show "Saving..." immediately for user feedback
+      setStatus('saving');
 
       return () => clearAllTimeouts();
     }
@@ -121,11 +111,8 @@ export function AutosaveIndicator() {
     if (wasSaving && !isSaving && isOnline) {
       clearAllTimeouts();
 
-      // If we never showed "Saving..." (mutation was <300ms), skip straight to idle
-      // Otherwise, show "Saved" briefly
-
-      // Wait 1 second to see if more mutations are coming
-      // (prevents flashing during rapid changes like typing)
+      // Wait 500ms to see if more mutations are coming
+      // (prevents "Saving..." -> "Saved" -> "Saving..." flashing during rapid typing)
       showSavedTimeoutRef.current = setTimeout(() => {
         if (!isMountedRef.current) return;
 
@@ -137,7 +124,7 @@ export function AutosaveIndicator() {
             setStatus('idle');
           }
         }, 2000);
-      }, 1000);
+      }, 500);
 
       return () => clearAllTimeouts();
     }
