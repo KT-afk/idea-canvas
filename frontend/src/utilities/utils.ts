@@ -29,3 +29,19 @@ export const getColorClass = (color: string): string => {
   };
   return colorMap[color] || "#FEF3C7"; // default to warm yellow
 };
+
+// Helper to determine if a color is "light" (requires dark text)
+export const isLightColor = (color: string): boolean => {
+  const lightColors = [
+    'yellow', 'red', 'blue', 'green', 'purple', 'orange', 'pink', 
+    'teal', 'indigo', 'lime', 'rose', 'cyan', 'amber', 'emerald', 
+    'violet', 'fuchsia', 'white', 'gray'
+  ];
+  return lightColors.includes(color);
+};
+
+export const COLOR_KEYS = [
+  "yellow", "red", "blue", "green", "purple", "orange", "pink", "teal", "indigo", "lime", 
+  "rose", "cyan", "amber", "emerald", "violet", "fuchsia", "classicRed", "classicBlue", 
+  "classicGreen", "white", "black", "gray"
+];

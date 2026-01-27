@@ -96,12 +96,8 @@ export function AutosaveIndicator() {
     if (!wasSaving && isSaving) {
       clearAllTimeouts();
 
-      // Clear any previous error state when new mutation starts
-      if (status === 'error') {
-        setStatus('idle');
-      }
-
       // Show "Saving..." immediately for user feedback
+      // (This also clears any previous error state)
       setStatus('saving');
 
       return () => clearAllTimeouts();
@@ -111,20 +107,15 @@ export function AutosaveIndicator() {
     if (wasSaving && !isSaving && isOnline) {
       clearAllTimeouts();
 
-      // Wait 500ms to see if more mutations are coming
-      // (prevents "Saving..." -> "Saved" -> "Saving..." flashing during rapid typing)
-      showSavedTimeoutRef.current = setTimeout(() => {
-        if (!isMountedRef.current) return;
+      // Show "Saved" immediately when mutation completes
+      setStatus('saved');
 
-        setStatus('saved');
-
-        // Hide "Saved" after 2 seconds
-        hideSavedTimeoutRef.current = setTimeout(() => {
-          if (isMountedRef.current) {
-            setStatus('idle');
-          }
-        }, 2000);
-      }, 500);
+      // Hide "Saved" after 2 seconds (unless new mutation starts)
+      hideSavedTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          setStatus('idle');
+        }
+      }, 2000);
 
       return () => clearAllTimeouts();
     }

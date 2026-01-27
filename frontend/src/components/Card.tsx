@@ -282,7 +282,12 @@ export function Card({
       />
 
       <div className="absolute top-2.5 left-2.5 flex gap-1.5 z-10">
-        <ColorPickerPopover icon={PaintBucket} selectedColor={backgroundColor} onColorChange={onColorChange}/>
+        <ColorPickerPopover 
+          icon={PaintBucket} 
+          selectedColor={backgroundColor} 
+          onColorChange={onColorChange}
+          onTextColorChange={onTextColorChange} // Pass this to enable auto-contrast
+        />
         <ColorPickerPopover icon={Type} selectedColor={textColor} onColorChange={onTextColorChange} />
       </div>
       <button
