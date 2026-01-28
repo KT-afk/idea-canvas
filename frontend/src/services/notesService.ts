@@ -30,6 +30,7 @@ export async function createNote(note: {
   positionY: number;
   type?: 'note' | 'idea' | 'plan';
   status?: 'active' | 'archived' | 'graduated';
+  boardId?: string; // Story 3.1: Support creating note in specific board
 }): Promise<Note> {
   const res = await fetch(`${API_URL}/api/notes`, {
     method: "POST",

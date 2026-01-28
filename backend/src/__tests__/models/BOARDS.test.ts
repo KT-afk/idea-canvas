@@ -79,9 +79,9 @@ describe('BOARDS Model', () => {
 
       expect(boardWithNotes?.notes).toBeDefined();
       expect(Array.isArray(boardWithNotes?.notes)).toBe(true);
-      expect(boardWithNotes?.notes.length).toBe(2);
-      expect(boardWithNotes?.notes[0].content).toBe('Note 1');
-      expect(boardWithNotes?.notes[1].content).toBe('Note 2');
+      expect(boardWithNotes?.notes?.length).toBe(2);
+      expect(boardWithNotes?.notes?.[0].content).toBe('Note 1');
+      expect(boardWithNotes?.notes?.[1].content).toBe('Note 2');
 
       await note1.destroy();
       await note2.destroy();
