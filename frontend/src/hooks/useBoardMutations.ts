@@ -121,18 +121,8 @@ export function useBoardMutations() {
             },
           },
           duration: 5000,
-          onDismiss: () => {
-            // Hard delete after toast closes if undo not clicked
-            if (!undoClicked) {
-              setTimeout(() => {
-                hardDeleteBoard(boardId).catch((err) => {
-                  console.error("Failed to permanently delete board:", err);
-                });
-              }, 100);
-            }
-          },
           onAutoClose: () => {
-            // Hard delete after auto-close if undo not clicked
+            // Hard delete after toast auto-closes if undo not clicked
             if (!undoClicked) {
               setTimeout(() => {
                 hardDeleteBoard(boardId).catch((err) => {
@@ -169,10 +159,9 @@ export function useBoardMutations() {
         restoredBoard,
       ]);
       
-      // Invalidate notes to refresh cards (they might have been moved)
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-      
-      toast.success("Board restored successfully");
+      // Note: Cards are NOT moved back - they remain on the fallback board
+      // This is a known limitation of the current undo implementation
+      toast.success("Board restored (cards remain on fallback board)");
     },
     onError: (_err, _var, context) => {
       // Rollback on error

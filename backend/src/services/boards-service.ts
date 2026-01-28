@@ -17,7 +17,12 @@ export const getAllBoards = async () => {
 
 export const getBoardById = async (id: string) => {
   try {
-    return await withRetry(async () => await Boards.findByPk(id));
+    return await withRetry(async () => await Boards.findOne({
+      where: { 
+        id,
+        deletedAt: null 
+      }
+    }));
   } catch (error) {
     console.error("❌ Error fetching board by ID:", error);
     throw error;
@@ -156,13 +161,27 @@ export const restoreBoard = async (boardId: string): Promise<Boards> => {
 export const hardDeleteBoard = async (boardId: string): Promise<void> => {
   try {
     await withRetry(async () => {
-      const deletedCount = await Boards.destroy({
-        where: { id: boardId }
-      });
+      return await sequelize.transaction(async (transaction) => {
+        // Check if any cards still exist on this board
+        const cardCount = await Notes.count({
+          where: { boardId },
+          transaction
+        });
 
-      if (deletedCount === 0) {
-        throw new Error("Board not found");
-      }
+        if (cardCount > 0) {
+          throw new Error(`Cannot hard delete board: ${cardCount} cards still exist on this board`);
+        }
+
+        // Safe to delete - no cards remain
+        const deletedCount = await Boards.destroy({
+          where: { id: boardId },
+          transaction
+        });
+
+        if (deletedCount === 0) {
+          throw new Error("Board not found");
+        }
+      });
     });
   } catch (error) {
     console.error("❌ Error permanently deleting board:", error);

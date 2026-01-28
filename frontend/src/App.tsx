@@ -34,14 +34,8 @@ function App() {
   // Story 1.3 AC#8: Track pending note position for skeleton (optimistic feel)
   const [pendingNotePosition, setPendingNotePosition] = useState<{ x: number; y: number } | null>(null);
 
-  const {
-    data: notes = [],
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["notes"],
-    queryFn: fetchNotes,
-  });
+  // Story 3.1: Track current board (default to first board or null)
+  const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
 
   // Story 3.1: Fetch all boards
   const {
@@ -51,8 +45,15 @@ function App() {
     queryFn: fetchBoards,
   });
 
-  // Story 3.1: Track current board (default to first board or null)
-  const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
+  const {
+    data: notes = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["notes", currentBoardId],
+    queryFn: fetchNotes,
+    enabled: !!currentBoardId,
+  });
 
   // Story 3.1: Set default board when boards are loaded
   useEffect(() => {
@@ -67,7 +68,8 @@ function App() {
       const currentBoardExists = boards.some((b) => b.id === currentBoardId);
       if (!currentBoardExists) {
         // Current board was deleted, switch to first board alphabetically
-        const fallbackBoard = boards.sort((a, b) => a.name.localeCompare(b.name))[0];
+        // Use [...boards] to avoid mutating the original array
+        const fallbackBoard = [...boards].sort((a, b) => a.name.localeCompare(b.name))[0];
         setCurrentBoardId(fallbackBoard.id);
       }
     }
@@ -101,7 +103,7 @@ function App() {
     // Create note with single space (backend requires non-empty content)
     // The space will be selected on focus so user can immediately type over it
     addNote.mutate(
-      { content: " ", positionX, positionY, type, status: "active" },
+      { content: " ", positionX, positionY, type, status: "active", boardId: currentBoardId ?? undefined },
       {
         onSuccess: (data) => {
           // Clear skeleton and set newNoteId to trigger auto-focus
@@ -116,7 +118,7 @@ function App() {
         },
       }
     );
-  }, [notes.length, addNote]);
+  }, [notes.length, addNote, currentBoardId]);
 
   // Story 1.3: Handle double-click on canvas to create note at clicked position
   const handleCanvasDoubleClick = useCallback((screenX: number, screenY: number) => {
@@ -255,31 +257,31 @@ function App() {
               )}
               {visibleNotes.map((note: Note) => {
                 // Story 1.6: Conditionally render card type based on note.type
-                const cardProps = {
-                  id: note.id,
-                  key: note.id,
-                  positionX: note.positionX ?? 0,
-                  positionY: note.positionY ?? 0,
-                  backgroundColor: note.backgroundColor ?? "yellow",
-                  textColor: note.textColor ?? "black",
-                  content: note.content,
-                  type: note.type ?? "note",
-                  status: note.status ?? "active", // Story 2.3
-                  isNew: note.id === newNoteId,
-                  onEdit: (id: string, newContent: string) =>
-                    editNote.mutateAsync({ id, payload: { content: newContent } }),
-                  onColorChange: (backgroundColor: string) => updateColor.mutate({id:note.id, backgroundColor}),
-                  onTextColorChange: (textColor: string) => updateTextColor.mutate({id:note.id, textColor}),
-                  onTypeChange: (type: 'note' | 'idea' | 'plan') => updateType.mutate({id: note.id, type}),
-                  onDelete: (id: string) => deleteNote.mutate(id),
-                  onArchive: (id: string) => archiveNote.mutate(id), // Story 2.3
-                  onRestore: (id: string) => restoreNote.mutate(id), // Story 2.3
-                  zIndex: order[note.id] ?? 0,
-                  onBringToFront: () => bringToFront(note.id),
-                  onDragEndSave: (id: string, positionX: number, positionY: number) =>
-                    updatePosition.mutate({ id, positionX, positionY }),
-                  onNewNoteFocused: handleClearNewNote,
-                };
+                  const cardProps = {
+                    id: note.id,
+                    key: note.id,
+                    positionX: note.positionX ?? 0,
+                    positionY: note.positionY ?? 0,
+                    backgroundColor: note.backgroundColor ?? "yellow",
+                    textColor: note.textColor ?? "black",
+                    content: note.content,
+                    type: note.type ?? "note",
+                    status: note.status ?? "active", // Story 2.3
+                    isNew: note.id === newNoteId,
+                    onEdit: (id: string, newContent: string) =>
+                      editNote.mutateAsync({ id, payload: { content: newContent }, boardId: currentBoardId ?? undefined }),
+                    onColorChange: (backgroundColor: string) => updateColor.mutate({id:note.id, backgroundColor, boardId: currentBoardId ?? undefined}),
+                    onTextColorChange: (textColor: string) => updateTextColor.mutate({id:note.id, textColor, boardId: currentBoardId ?? undefined}),
+                    onTypeChange: (type: 'note' | 'idea' | 'plan') => updateType.mutate({id: note.id, type, boardId: currentBoardId ?? undefined}),
+                    onDelete: (id: string) => deleteNote.mutate(id),
+                    onArchive: (id: string) => archiveNote.mutate({id, boardId: currentBoardId ?? undefined}), // Story 2.3
+                    onRestore: (id: string) => restoreNote.mutate({id, boardId: currentBoardId ?? undefined}), // Story 2.3
+                    zIndex: order[note.id] ?? 0,
+                    onBringToFront: () => bringToFront(note.id),
+                    onDragEndSave: (id: string, positionX: number, positionY: number) =>
+                      updatePosition.mutate({ id, positionX, positionY, boardId: currentBoardId ?? undefined }),
+                    onNewNoteFocused: handleClearNewNote,
+                  };
 
                 // Render the appropriate card component based on type
                 if (note.type === 'idea') {

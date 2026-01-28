@@ -1,5 +1,6 @@
 import { Check, ChevronDown, MoreVertical, Pencil, Trash, X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -119,6 +120,8 @@ export function BoardSwitcher({
       setDeleteDialogOpen(true);
     } catch (error) {
       console.error("Failed to get board info:", error);
+      toast.error("Failed to load board information");
+      setBoardToDelete(null);
     }
   };
 
