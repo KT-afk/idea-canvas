@@ -61,6 +61,18 @@ function App() {
     }
   }, [boards, currentBoardId]);
 
+  // Story 3.3: Auto-switch to fallback board if current board is deleted
+  useEffect(() => {
+    if (currentBoardId && boards.length > 0) {
+      const currentBoardExists = boards.some((b) => b.id === currentBoardId);
+      if (!currentBoardExists) {
+        // Current board was deleted, switch to first board alphabetically
+        const fallbackBoard = boards.sort((a, b) => a.name.localeCompare(b.name))[0];
+        setCurrentBoardId(fallbackBoard.id);
+      }
+    }
+  }, [boards, currentBoardId]);
+
   const { addNote, editNote, updatePosition, updateColor, updateTextColor, updateType, deleteNote, archiveNote, restoreNote } = useNoteMutations();
   const { createBoard } = useBoardMutations(); // Story 3.1
   const { order, bringToFront } = useZIndexManager(notes);

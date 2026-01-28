@@ -1,13 +1,16 @@
-import { Check, ChevronDown, Pencil, X } from "lucide-react";
+import { Check, ChevronDown, MoreVertical, Pencil, Trash, X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { useBoardMutations } from "../hooks/useBoardMutations";
+import { DeleteBoardDialog } from "./DeleteBoardDialog";
+import { getBoardCardCount } from "../services/boardsService";
 import type { Board } from "../types/types";
 
 interface BoardSwitcherProps {
@@ -26,8 +29,13 @@ export function BoardSwitcher({
   const [editName, setEditName] = useState("");
   const [originalName, setOriginalName] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [boardToDelete, setBoardToDelete] = useState<Board | null>(null);
+  const [cardCount, setCardCount] = useState(0);
+  const [fallbackBoardName, setFallbackBoardName] = useState("");
+  const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { renameBoard } = useBoardMutations();
+  const { renameBoard, deleteBoard } = useBoardMutations();
 
   // Auto-focus input when entering edit mode
   useEffect(() => {
@@ -92,27 +100,56 @@ export function BoardSwitcher({
     }
   };
 
+  const openDeleteDialog = async (board: Board, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActionMenuOpen(null);
+    setBoardToDelete(board);
+    
+    // Fetch card count
+    try {
+      const count = await getBoardCardCount(board.id);
+      setCardCount(count);
+      
+      // Get fallback board name
+      const fallbackBoard = boards
+        .filter((b) => b.id !== board.id)
+        .sort((a, b) => a.name.localeCompare(b.name))[0];
+      setFallbackBoardName(fallbackBoard?.name || "");
+      
+      setDeleteDialogOpen(true);
+    } catch (error) {
+      console.error("Failed to get board info:", error);
+    }
+  };
+
+  const handleDelete = () => {
+    if (boardToDelete) {
+      deleteBoard.mutate(boardToDelete.id);
+      setBoardToDelete(null);
+    }
+  };
+
   if (boards.length === 0) {
     return null;
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-2"
-          aria-label="Switch board"
-        >
-          <span className="max-w-[150px] truncate">
-            {currentBoard?.name || "Select Board"}
-          </span>
-          <ChevronDown className="w-4 h-4 opacity-50" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[240px]">
-        {boards.map((board) => (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+            aria-label="Switch board"
+          >
+            <span className="max-w-[150px] truncate">
+              {currentBoard?.name || "Select Board"}
+            </span>
+            <ChevronDown className="w-4 h-4 opacity-50" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-[240px]">{boards.map((board) => (
           <DropdownMenuItem
             key={board.id}
             onSelect={(e) => {
@@ -176,15 +213,43 @@ export function BoardSwitcher({
               <>
                 <span className="truncate flex-1">{board.name}</span>
                 <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                  <button
-                    onClick={(e) => startEditing(board, e)}
-                    disabled={renameBoard.isPending || editingId !== null}
-                    className="p-1 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
-                    aria-label={`Rename ${board.name}`}
-                    type="button"
+                  <DropdownMenu 
+                    open={actionMenuOpen === board.id} 
+                    onOpenChange={(open) => setActionMenuOpen(open ? board.id : null)}
                   >
-                    <Pencil className="w-3 h-3" />
-                  </button>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        onClick={(e) => e.stopPropagation()}
+                        disabled={editingId !== null}
+                        className="p-1 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+                        aria-label={`Board actions for ${board.name}`}
+                        type="button"
+                      >
+                        <MoreVertical className="w-3 h-3" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[160px]">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          startEditing(board, e);
+                          setActionMenuOpen(null);
+                        }}
+                        disabled={renameBoard.isPending}
+                      >
+                        <Pencil className="w-3 h-3 mr-2" />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => openDeleteDialog(board, e)}
+                        disabled={boards.length <= 1 || deleteBoard.isPending}
+                        className="text-red-600 focus:text-red-600"
+                      >
+                        <Trash className="w-3 h-3 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   {board.id === currentBoardId && (
                     <Check className="w-4 h-4" />
                   )}
@@ -195,5 +260,18 @@ export function BoardSwitcher({
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+    
+    {boardToDelete && (
+      <DeleteBoardDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onDeleteBoard={handleDelete}
+        boardName={boardToDelete.name}
+        cardCount={cardCount}
+        fallbackBoardName={fallbackBoardName}
+        isLoading={deleteBoard.isPending}
+      />
+    )}
+    </>
   );
 }

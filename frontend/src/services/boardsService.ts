@@ -47,3 +47,52 @@ export async function updateBoard(id: string, name: string): Promise<Board> {
   const data = await res.json();
   return data.data;
 }
+
+// Story 3.3: Get board card count
+export async function getBoardCardCount(id: string): Promise<number> {
+  const res = await fetch(`${API_URL}/api/boards/${id}/card-count`);
+  if (!res.ok) throw new Error("Failed to get card count");
+  const data = await res.json();
+  return data.data.count;
+}
+
+// Story 3.3: Soft delete a board
+export async function softDeleteBoard(id: string): Promise<{
+  board: Board;
+  fallbackBoardId: string;
+  fallbackBoardName: string;
+}> {
+  const res = await fetch(`${API_URL}/api/boards/${id}/soft`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error?.message || "Failed to delete board");
+  }
+  const data = await res.json();
+  return data.data;
+}
+
+// Story 3.3: Restore a soft-deleted board
+export async function restoreBoard(id: string): Promise<Board> {
+  const res = await fetch(`${API_URL}/api/boards/${id}/restore`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error?.message || "Failed to restore board");
+  }
+  const data = await res.json();
+  return data.data;
+}
+
+// Story 3.3: Permanently delete a board (hard delete)
+export async function hardDeleteBoard(id: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/boards/${id}/hard`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error?.message || "Failed to permanently delete board");
+  }
+}
