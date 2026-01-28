@@ -1,6 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { createBoard, updateBoard } from "../services/boardsService";
+import { 
+  createBoard, 
+  updateBoard, 
+  softDeleteBoard, 
+  restoreBoard, 
+  hardDeleteBoard 
+} from "../services/boardsService";
 import type { Board } from "../types/types";
 
 export function useBoardMutations() {
@@ -82,8 +88,105 @@ export function useBoardMutations() {
     },
   });
 
+  // Story 3.3: Soft delete board with optimistic UI and undo
+  const deleteBoardMutation = useMutation({
+    mutationFn: (id: string) => softDeleteBoard(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["boards"] });
+      const previousBoards = queryClient.getQueryData<Board[]>(["boards"]);
+
+      // Optimistically remove board from cache
+      queryClient.setQueryData<Board[]>(["boards"], (oldBoards = []) =>
+        oldBoards.filter((board) => board.id !== id)
+      );
+
+      return { previousBoards };
+    },
+    onSuccess: (data, boardId) => {
+      // Keep board removed from cache
+      queryClient.setQueryData<Board[]>(["boards"], (oldBoards = []) =>
+        oldBoards.filter((board) => board.id !== boardId)
+      );
+      
+      // Show toast with undo button
+      let undoClicked = false;
+      toast.success(
+        `Board deleted. Cards moved to "${data.fallbackBoardName}".`,
+        {
+          action: {
+            label: "Undo",
+            onClick: () => {
+              undoClicked = true;
+              restoreBoardMutation.mutate(boardId);
+            },
+          },
+          duration: 5000,
+          onDismiss: () => {
+            // Hard delete after toast closes if undo not clicked
+            if (!undoClicked) {
+              setTimeout(() => {
+                hardDeleteBoard(boardId).catch((err) => {
+                  console.error("Failed to permanently delete board:", err);
+                });
+              }, 100);
+            }
+          },
+          onAutoClose: () => {
+            // Hard delete after auto-close if undo not clicked
+            if (!undoClicked) {
+              setTimeout(() => {
+                hardDeleteBoard(boardId).catch((err) => {
+                  console.error("Failed to permanently delete board:", err);
+                });
+              }, 100);
+            }
+          },
+        }
+      );
+    },
+    onError: (_err, _var, context) => {
+      // Rollback on error
+      if (context?.previousBoards) {
+        queryClient.setQueryData(["boards"], context.previousBoards);
+      }
+      toast.error("Failed to delete board");
+    },
+  });
+
+  // Story 3.3: Restore board with optimistic UI
+  const restoreBoardMutation = useMutation({
+    mutationFn: (id: string) => restoreBoard(id),
+    onMutate: async (_id) => {
+      await queryClient.cancelQueries({ queryKey: ["boards"] });
+      const previousBoards = queryClient.getQueryData<Board[]>(["boards"]);
+
+      return { previousBoards };
+    },
+    onSuccess: (restoredBoard) => {
+      // Add board back to cache
+      queryClient.setQueryData<Board[]>(["boards"], (oldBoards = []) => [
+        ...oldBoards,
+        restoredBoard,
+      ]);
+      
+      // Invalidate notes to refresh cards (they might have been moved)
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      
+      toast.success("Board restored successfully");
+    },
+    onError: (_err, _var, context) => {
+      // Rollback on error
+      if (context?.previousBoards) {
+        queryClient.setQueryData(["boards"], context.previousBoards);
+      }
+      toast.error("Failed to restore board");
+    },
+  });
+
   return {
     createBoard: createBoardMutation,
     renameBoard: renameBoardMutation,
+    deleteBoard: deleteBoardMutation,
+    restoreBoard: restoreBoardMutation,
   };
 }

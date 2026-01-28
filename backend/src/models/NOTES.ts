@@ -1,4 +1,4 @@
-import { CreationOptional, InferAttributes } from "sequelize";
+import { CreationOptional, InferAttributes, InferCreationAttributes } from "sequelize";
 import { BelongsTo, Column, DataType, Model, Table } from "sequelize-typescript";
 import Boards from "./BOARDS";
 
@@ -8,7 +8,7 @@ tableName: "NOTES",
   createdAt: "CREATEDAT",
   updatedAt: "UPDATEDAT",
 })
-export default class Notes extends Model<InferAttributes<Notes>, InferAttributes<Notes>> {
+export default class Notes extends Model<InferAttributes<Notes>, InferCreationAttributes<Notes>> {
     @Column({
         type: DataType.UUID,
         defaultValue: DataType.UUIDV4,
@@ -22,7 +22,7 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
         allowNull: true,
         field: "TITLE",
     })
-    declare title: string | null;
+    declare title: CreationOptional<string | null>;
 
     @Column({
         type: DataType.TEXT,
@@ -37,7 +37,7 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
         defaultValue: 'note',
         field: "TYPE",
     })
-    declare type: 'note' | 'idea' | 'plan';
+    declare type: CreationOptional<'note' | 'idea' | 'plan'>;
 
     @Column({
         type: DataType.ENUM('active', 'archived', 'graduated'),
@@ -45,7 +45,7 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
         defaultValue: 'active',
         field: "STATUS",
     })
-    declare status: 'active' | 'archived' | 'graduated';
+    declare status: CreationOptional<'active' | 'archived' | 'graduated'>;
 
     @Column({
         type: DataType.DECIMAL(10, 2),
@@ -67,28 +67,28 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
         defaultValue: "yellow",
         field: "BACKGROUNDCOLOR",
     })
-    declare backgroundColor: string;
+    declare backgroundColor: CreationOptional<string>;
 
     @Column({
         type: DataType.UUID,
         allowNull: true,
         field: "BOARDID",
     })
-    declare boardId: string | null;
+    declare boardId: CreationOptional<string | null>;
 
     @Column({
         type: DataType.UUID,
         allowNull: true,
         field: "USERID",
     })
-    declare userId: string | null;
+    declare userId: CreationOptional<string | null>;
 
     @Column({
         type: DataType.DATE,
         allowNull: true,
         field: "ARCHIVEDAT",
     })
-    declare archivedAt: Date | null;
+    declare archivedAt: CreationOptional<Date | null>;
 
     @BelongsTo(() => Boards, {
         foreignKey: "boardId",
@@ -101,7 +101,7 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
         defaultValue: 0,
         field: "ZINDEX",
     })
-    declare zIndex: number;
+    declare zIndex: CreationOptional<number>;
 
     @Column({
         type: DataType.STRING,
@@ -109,5 +109,5 @@ export default class Notes extends Model<InferAttributes<Notes>, InferAttributes
         defaultValue: "black",
         field: "TEXTCOLOR",
     })
-    declare textColor: string;
+    declare textColor: CreationOptional<string>;
 }
