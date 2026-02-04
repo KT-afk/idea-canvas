@@ -4,6 +4,14 @@ import request from 'supertest';
 import { boardsRouter } from '../../routes/boards-route';
 import * as boardsService from '../../services/boards-service';
 
+// Mock the database config to prevent Sequelize initialization
+vi.mock('../../config/db', () => ({
+  sequelize: {
+    transaction: vi.fn((callback) => callback()),
+  },
+  connectDB: vi.fn(),
+}));
+
 // Mock the boards service
 vi.mock('../../services/boards-service');
 
