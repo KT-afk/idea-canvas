@@ -3,6 +3,7 @@ import express from "express";
 import { connectDB, sequelize } from "./config/db";
 import { router } from "./routes/notes-route";
 import { boardsRouter } from "./routes/boards-route";
+import { preferencesRouter } from "./routes/preferences-route";
 import { apiLimiter } from "./middleware/rateLimiter";
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api', apiLimiter);
 
 app.use("/api", router);
 app.use("/api", boardsRouter);
+app.use("/api", preferencesRouter);
 const port = process.env.PORT || 3000;
 
 

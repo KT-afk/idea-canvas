@@ -13,8 +13,9 @@ import { NewBoardDialog } from "./components/NewBoardDialog"; // Story 3.1
 import { BoardSwitcher } from "./components/BoardSwitcher"; // Story 3.1
 import { useNoteMutations } from "./hooks/useNoteMutations";
 import { useBoardMutations } from "./hooks/useBoardMutations"; // Story 3.1
+import { usePreferences } from "./hooks/usePreferences"; // Story 3.4
 import { useZIndexManager } from "./hooks/useZIndexManager";
-import { fetchNotes } from "./services/notesService";
+import { fetchNotesByBoard } from "./services/notesService";
 import { fetchBoards } from "./services/boardsService"; // Story 3.1
 import type { Note } from "./types/types";
 
@@ -45,22 +46,35 @@ function App() {
     queryFn: fetchBoards,
   });
 
+  // Story 3.4: Fetch user preferences
+  const { preferences, isLoading: isLoadingPrefs } = usePreferences();
+
   const {
     data: notes = [],
     isLoading,
     isError,
   } = useQuery({
     queryKey: ["notes", currentBoardId],
-    queryFn: fetchNotes,
+    queryFn: () => fetchNotesByBoard(currentBoardId ?? ""),
     enabled: !!currentBoardId,
   });
 
-  // Story 3.1: Set default board when boards are loaded
+  // Story 3.4: Set default board when boards and preferences are loaded
   useEffect(() => {
-    if (boards.length > 0 && !currentBoardId) {
+    if (boards.length > 0 && !currentBoardId && !isLoadingPrefs) {
+      // Try to use preferred default board
+      if (preferences?.defaultBoardId) {
+        const defaultBoardExists = boards.some(b => b.id === preferences.defaultBoardId);
+        if (defaultBoardExists) {
+          setCurrentBoardId(preferences.defaultBoardId);
+          return;
+        }
+      }
+      
+      // Fallback to first board
       setCurrentBoardId(boards[0].id);
     }
-  }, [boards, currentBoardId]);
+  }, [boards, currentBoardId, preferences, isLoadingPrefs]);
 
   // Story 3.3: Auto-switch to fallback board if current board is deleted
   useEffect(() => {
