@@ -1,8 +1,8 @@
 import express from "express";
-import { 
-  getAllBoards, 
-  getBoardById, 
-  createBoard, 
+import {
+  getAllBoards,
+  getBoardById,
+  createBoard,
   updateBoard,
   getBoardCardCount,
   getFallbackBoard,
@@ -124,6 +124,7 @@ boardsRouter.get("/boards/:id/card-count", async (req, res) => {
 boardsRouter.delete("/boards/:id/soft", async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.query.userId as string || "default-user";
     
     // Check if this is the last board
     const allBoards = await getAllBoards();
@@ -133,8 +134,8 @@ boardsRouter.delete("/boards/:id/soft", async (req, res) => {
       });
     }
     
-    // Get fallback board
-    const fallbackBoard = await getFallbackBoard(id);
+    // Get fallback board (respects user's default board preference)
+    const fallbackBoard = await getFallbackBoard(id, userId);
     if (!fallbackBoard) {
       return res.status(500).json({ 
         error: { code: 'INTERNAL_ERROR', message: 'No fallback board found' } 

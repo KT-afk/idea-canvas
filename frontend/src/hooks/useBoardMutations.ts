@@ -1,16 +1,27 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef, useEffect } from "react";
 import { toast } from "sonner";
-import { 
-  createBoard, 
-  updateBoard, 
-  softDeleteBoard, 
-  restoreBoard, 
-  hardDeleteBoard 
+import {
+  createBoard,
+  updateBoard,
+  softDeleteBoard,
+  restoreBoard,
+  hardDeleteBoard
 } from "../services/boardsService";
 import type { Board } from "../types/types";
 
 export function useBoardMutations() {
   const queryClient = useQueryClient();
+  const hardDeleteTimerRef = useRef<number | null>(null);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (hardDeleteTimerRef.current) {
+        clearTimeout(hardDeleteTimerRef.current);
+      }
+    };
+  }, []);
 
   // Story 3.1: Create board with optimistic UI
   const createBoardMutation = useMutation({
@@ -124,11 +135,18 @@ export function useBoardMutations() {
           onAutoClose: () => {
             // Hard delete after toast auto-closes if undo not clicked
             if (!undoClicked) {
-              setTimeout(() => {
+              hardDeleteTimerRef.current = setTimeout(() => {
                 hardDeleteBoard(boardId).catch((err) => {
                   console.error("Failed to permanently delete board:", err);
                 });
               }, 100);
+            }
+          },
+          onDismiss: () => {
+            // Cancel hard delete if toast is manually dismissed
+            if (hardDeleteTimerRef.current && !undoClicked) {
+              clearTimeout(hardDeleteTimerRef.current);
+              hardDeleteTimerRef.current = null;
             }
           },
         }
@@ -159,9 +177,10 @@ export function useBoardMutations() {
         restoredBoard,
       ]);
       
-      // Note: Cards are NOT moved back - they remain on the fallback board
-      // This is a known limitation of the current undo implementation
-      toast.success("Board restored (cards remain on fallback board)");
+      // Invalidate notes query to show restored cards
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      
+      toast.success("Board and cards restored successfully");
     },
     onError: (_err, _var, context) => {
       // Rollback on error
