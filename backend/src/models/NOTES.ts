@@ -110,4 +110,11 @@ export default class Notes extends Model<InferAttributes<Notes>, InferCreationAt
         field: "TEXTCOLOR",
     })
     declare textColor: CreationOptional<string>;
+
+    @Column({
+        type: DataType.JSONB,
+        allowNull: true,
+        field: "METADATA",
+    })
+    declare metadata: CreationOptional<Record<string, any> | null>;
 }
