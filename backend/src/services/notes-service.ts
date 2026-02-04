@@ -28,14 +28,6 @@ export const insertNote = async (note: CreationAttributes<Notes>, options?: { tr
     throw error;
   }
 };
-export const getAllNotes = async () => {
-  try {
-    return await withRetry(async () => await Notes.findAll());
-  } catch (error) {
-    console.error("❌ Error fetching all notes:", error);
-    throw error;
-  }
-};
 
 export const getNoteById = async (id: string) => {
   try {

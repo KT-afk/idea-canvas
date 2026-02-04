@@ -16,11 +16,16 @@ export async function fetchNotes(): Promise<Note[]> {
 }
 
 // ✅ Fetch notes by board
-export async function fetchNotesByBoard(boardId: number) {
+export async function fetchNotesByBoard(boardId: string) {
   const res = await fetch(`${API_URL}/api/notes/board/${boardId}`);
-  if (!res.ok) throw new Error(`Failed to fetch notes for the board ${boardId}`);
+  if (!res.ok) throw new Error("Failed to fetch notes");
   const data = await res.json();
-  return data.data;
+  return data.data.map((note: Note) => ({
+      ...note,
+      positionX: Number(note.positionX),
+      positionY: Number(note.positionY),
+    }
+  ));
 }
 
 // ✅ Create a note
