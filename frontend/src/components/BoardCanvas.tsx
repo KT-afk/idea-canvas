@@ -1,6 +1,6 @@
-import { motion, useMotionValue, animate, useDragControls } from 'framer-motion';
-import { useState, useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { animate, motion, useDragControls, useMotionValue } from 'framer-motion';
 import type { ReactNode } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { Note } from '../types/types'; // Import Note type
 
 interface BoardCanvasProps {
@@ -295,9 +295,17 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
           break;
         case 'h':
         case 'H':
-          e.preventDefault();
-          resetToHome();
-          break;
+        { 
+          const activeElement = document.activeElement;
+          const isTyping = activeElement?.tagName === 'INPUT' ||
+                          activeElement?.tagName === 'TEXTAREA' ||
+                          activeElement?.getAttribute('contenteditable') === 'true';
+          if (!isTyping) {
+            e.preventDefault();
+            resetToHome();
+          }
+          break; 
+        }
         case 'Escape':
           // Remove focus from canvas
           if (canvasRef.current) {
