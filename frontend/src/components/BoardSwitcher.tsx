@@ -1,6 +1,12 @@
-import { Check, ChevronDown, MoreVertical, Pencil, Trash, X } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { formatCompactTime } from "@/utilities/formatTime";
+import { Check, ChevronDown, MoreVertical, Pencil, Star, Trash, X } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useBoardMutations } from "../hooks/useBoardMutations";
+import { usePreferences } from "../hooks/usePreferences";
+import { getBoardCardCount } from "../services/boardsService";
+import type { Board } from "../types/types";
+import { DeleteBoardDialog } from "./DeleteBoardDialog";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -9,10 +15,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { useBoardMutations } from "../hooks/useBoardMutations";
-import { DeleteBoardDialog } from "./DeleteBoardDialog";
-import { getBoardCardCount } from "../services/boardsService";
-import type { Board } from "../types/types";
 
 interface BoardSwitcherProps {
   boards: Board[];
@@ -37,6 +39,7 @@ export function BoardSwitcher({
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { renameBoard, deleteBoard } = useBoardMutations();
+  const { preferences, setDefaultBoard } = usePreferences();
 
   // Auto-focus input when entering edit mode
   useEffect(() => {
@@ -131,11 +134,18 @@ export function BoardSwitcher({
       setBoardToDelete(null);
     }
   };
+  const sortedBoards = React.useMemo(() => {
+    const sorted = [...boards].sort((a, b) => {
+      if (a.id === currentBoardId) return -1;
+      if (b.id === currentBoardId) return 1;
+      return a.name.localeCompare(b.name);
+    })
+    return sorted;
+  }, [boards, currentBoardId]);
 
   if (boards.length === 0) {
     return null;
   }
-
   return (
     <>
       <DropdownMenu>
@@ -152,116 +162,142 @@ export function BoardSwitcher({
             <ChevronDown className="w-4 h-4 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[240px]">{boards.map((board) => (
-          <DropdownMenuItem
-            key={board.id}
-            onSelect={(e) => {
-              if (editingId === board.id) {
-                e.preventDefault();
-              } else {
-                onBoardChange(board.id);
-              }
-            }}
-            className="flex items-center justify-between cursor-pointer group"
-          >
-            {editingId === board.id ? (
-              <div className="flex-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center gap-1">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={editName}
-                    onChange={(e) => {
-                      setEditName(e.target.value);
-                      setValidationError("");
-                    }}
-                    onKeyDown={(e) => handleKeyDown(e, board.id)}
-                    onBlur={() => saveEdit(board.id)}
-                    disabled={renameBoard.isPending}
-                    className="flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Edit board name"
-                    aria-invalid={!!validationError}
-                    aria-describedby={validationError ? `error-${board.id}` : undefined}
-                    maxLength={101}
-                  />
-                  <button
-                    onMouseDown={(e) => {
-                      e.preventDefault(); // Prevent blur from firing
-                      e.stopPropagation();
-                      cancelEditing();
-                    }}
-                    className="p-1 hover:bg-accent rounded"
-                    aria-label="Cancel editing"
-                    type="button"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-                {validationError && (
-                  <span
-                    id={`error-${board.id}`}
-                    className="text-xs text-red-500"
-                    role="alert"
-                  >
-                    {validationError}
-                  </span>
-                )}
-                {editName.length >= 90 && !validationError && (
-                  <span className="text-xs text-muted-foreground">
-                    {editName.length}/100 characters
-                  </span>
+        <DropdownMenuContent align="start" className="w-[240px]">
+  {sortedBoards.map((board) => {
+    return (
+        <DropdownMenuItem key={board.id}
+          onSelect={(e) => {
+            if (editingId === board.id) {
+              e.preventDefault();
+            } else {
+              onBoardChange(board.id);
+            }
+          }}
+          className="flex items-center justify-between cursor-pointer group"
+        >
+          {editingId === board.id ? (
+            <div className="flex-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-1">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={editName}
+                  onChange={(e) => {
+                    setEditName(e.target.value);
+                    setValidationError("");
+                  }}
+                  onKeyDown={(e) => handleKeyDown(e, board.id)}
+                  onBlur={() => saveEdit(board.id)}
+                  disabled={renameBoard.isPending}
+                  className="flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Edit board name"
+                  aria-invalid={!!validationError}
+                  aria-describedby={validationError ? `error-${board.id}` : undefined}
+                  maxLength={101}
+                />
+                <button
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    cancelEditing();
+                  }}
+                  className="p-1 hover:bg-accent rounded"
+                  aria-label="Cancel editing"
+                  type="button"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              {validationError && (
+                <span
+                  id={`error-${board.id}`}
+                  className="text-xs text-red-500"
+                  role="alert"
+                >
+                  {validationError}
+                </span>
+              )}
+              {editName.length >= 90 && !validationError && (
+                <span className="text-xs text-muted-foreground">
+                  {editName.length}/100 characters
+                </span>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span 
+                  className="truncate flex-1"
+                  title={board.lastOpenedAt 
+                    ? `Last opened ${formatCompactTime(board.lastOpenedAt)} (${new Date(board.lastOpenedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })})` 
+                    : 'Never opened'
+                  }
+                >
+                  {board.name}
+                </span>
+                {preferences?.defaultBoardId === board.id && (
+                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 flex-shrink-0" aria-label="Default board" />
                 )}
               </div>
-            ) : (
-              <>
-                <span className="truncate flex-1">{board.name}</span>
-                <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                  <DropdownMenu 
-                    open={actionMenuOpen === board.id} 
-                    onOpenChange={(open) => setActionMenuOpen(open ? board.id : null)}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        onClick={(e) => e.stopPropagation()}
-                        disabled={editingId !== null}
-                        className="p-1 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
-                        aria-label={`Board actions for ${board.name}`}
-                        type="button"
-                      >
-                        <MoreVertical className="w-3 h-3" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[160px]">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          startEditing(board, e);
-                          setActionMenuOpen(null);
-                        }}
-                        disabled={renameBoard.isPending}
-                      >
-                        <Pencil className="w-3 h-3 mr-2" />
-                        Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={(e) => openDeleteDialog(board, e)}
-                        disabled={boards.length <= 1 || deleteBoard.isPending}
-                        className="text-red-600 focus:text-red-600"
-                      >
-                        <Trash className="w-3 h-3 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  {board.id === currentBoardId && (
-                    <Check className="w-4 h-4" />
-                  )}
-                </div>
-              </>
-            )}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
+              <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                <DropdownMenu 
+                  open={actionMenuOpen === board.id} 
+                  onOpenChange={(open) => setActionMenuOpen(open ? board.id : null)}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      disabled={editingId !== null}
+                      className="p-1 hover:bg-accent rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+                      aria-label={`Board actions for ${board.name}`}
+                      type="button"
+                    >
+                      <MoreVertical className="w-3 h-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[160px]">
+                    <DropdownMenuItem
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         setDefaultBoard(board.id);
+                         setActionMenuOpen(null);
+                       }}
+                       disabled={preferences?.defaultBoardId === board.id}
+                    >
+                      <Star className="w-3 h-3 mr-2" />
+                      Set Default
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        startEditing(board, e);
+                        setActionMenuOpen(null);
+                      }}
+                      disabled={renameBoard.isPending}
+                    >
+                      <Pencil className="w-3 h-3 mr-2" />
+                      Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={(e) => openDeleteDialog(board, e)}
+                      disabled={boards.length <= 1 || deleteBoard.isPending}
+                      className="text-red-600 focus:text-red-600"
+                    >
+                      <Trash className="w-3 h-3 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {board.id === currentBoardId && (
+                  <Check className="w-4 h-4" />
+                )}
+              </div>
+            </>
+          )}
+        </DropdownMenuItem>
+    );
+  })}
+</DropdownMenuContent>
     </DropdownMenu>
     
     {boardToDelete && (

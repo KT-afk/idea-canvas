@@ -21,6 +21,7 @@ export type Board = {
   id: string;
   name: string;
   userId?: string | null;
+  lastOpenedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };
