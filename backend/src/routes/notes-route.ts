@@ -1,9 +1,9 @@
 import express from "express";
-import Notes from "../models/NOTES";
 import { sequelize } from "../config/db";
+import Notes from "../models/NOTES";
+import { updateLastOpenedAt } from "../services/boards-service";
 import {
   deleteNote,
-  getAllNotes,
   getAllNotesByBoardId,
   getNoteById,
   insertNote,
@@ -11,18 +11,6 @@ import {
 } from "../services/notes-service";
 
 export const router = express.Router();
-
-//Get all notes
-router.get("/notes", async (req, res) => {
-  try {
-    const result = await getAllNotes();
-    console.log("Success in fetching all notes!");
-    res.status(200).json({ data: result });
-  } catch (error) {
-    console.error("❌ Error getting all notes:", error);
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch notes' } });
-  }
-});
 
 //Create a note
 router.post("/notes", async (req, res) => {
@@ -78,7 +66,11 @@ router.put("/notes/:id", async (req, res) => {
 //Get notes by board ID
 router.get("/notes/board/:boardId", async (req, res) => {
   try {
-    const notes = await getAllNotesByBoardId(req.params.boardId);
+    const {boardId} = req.params;
+    updateLastOpenedAt(boardId).catch(err => {
+      console.error("❌ Error updating last opened at for board:", err);
+    });
+    const notes = await getAllNotesByBoardId(boardId);
     res.status(200).json({ data: notes });
   } catch (error) {
     console.error("❌ Error fetching notes by board:", error);

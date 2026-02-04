@@ -1,8 +1,8 @@
 import { CreationAttributes, Op } from "sequelize";
+import { sequelize } from "../config/db";
 import Boards from "../models/BOARDS";
 import Notes from "../models/NOTES";
 import { withRetry } from "../utils/retry";
-import { sequelize } from "../config/db";
 
 export const getAllBoards = async () => {
   try {
@@ -45,6 +45,21 @@ export const createBoard = async (board: CreationAttributes<Boards>) => {
   }
 };
 
+export const updateLastOpenedAt = async (id: string) => {
+  try {
+    return await withRetry(async () => {
+      const board = await Boards.findByPk(id);
+      if (!board) {
+        throw new Error("Board not found");
+      }
+      board.lastOpenedAt = new Date();
+      return await board.save();
+    });
+  } catch (error) {
+    console.error("❌ Error updating last opened at:", error);
+    throw error;
+  }
+};
 // Story 3.2: Update board name
 export const updateBoard = async (id: string, name: string) => {
   try {
@@ -79,10 +94,30 @@ export const getBoardCardCount = async (boardId: string): Promise<number> => {
   }
 };
 
-// Story 3.3: Get fallback board (first board alphabetically, excluding specified board)
-export const getFallbackBoard = async (excludeBoardId: string): Promise<Boards | null> => {
+// Story 3.3: Get fallback board
+// Priority: 1) User's default board (if set and not being deleted)
+//           2) First board alphabetically (excluding deleted board)
+export const getFallbackBoard = async (excludeBoardId: string, userId: string = "default-user"): Promise<Boards | null> => {
   try {
     return await withRetry(async () => {
+      // First, try to get user's default board from preferences
+      const { getDefaultBoardId } = await import('./preferences-service');
+      const defaultBoardId = await getDefaultBoardId(userId);
+      
+      // If user has a default board set and it's not the one being deleted, use it
+      if (defaultBoardId && defaultBoardId !== excludeBoardId) {
+        const defaultBoard = await Boards.findOne({
+          where: {
+            id: defaultBoardId,
+            deletedAt: null
+          }
+        });
+        if (defaultBoard) {
+          return defaultBoard;
+        }
+      }
+      
+      // Otherwise, fall back to first board alphabetically
       return await Boards.findOne({
         where: {
           id: { [Op.ne]: excludeBoardId },
@@ -98,6 +133,7 @@ export const getFallbackBoard = async (excludeBoardId: string): Promise<Boards |
 };
 
 // Story 3.3: Soft delete a board and move all its cards to fallback board
+// Cards are tracked with their original board ID for potential restoration
 export const softDeleteBoard = async (boardId: string, fallbackBoardId: string): Promise<Boards> => {
   return await withRetry(async () => {
     return await sequelize.transaction(async (transaction) => {
@@ -112,14 +148,27 @@ export const softDeleteBoard = async (boardId: string, fallbackBoardId: string):
         throw new Error("Board is already deleted");
       }
 
-      // Move all cards from this board to the fallback board
-      await Notes.update(
-        { boardId: fallbackBoardId },
-        { 
-          where: { boardId },
-          transaction 
-        }
-      );
+      // Get all cards from this board before moving
+      const cardsToMove = await Notes.findAll({
+        where: { boardId },
+        transaction
+      });
+
+      // Store original board ID and move cards to fallback board
+      // Note: This stores the deleted board ID in a metadata field for restoration
+      for (const card of cardsToMove) {
+        await card.update(
+          { 
+            boardId: fallbackBoardId,
+            metadata: {
+              ...((card.metadata as any) || {}),
+              previousBoardId: boardId, // Track for undo
+              movedAt: new Date().toISOString()
+            }
+          },
+          { transaction }
+        );
+      }
 
       // Soft delete the board
       board.deletedAt = new Date();
@@ -130,7 +179,7 @@ export const softDeleteBoard = async (boardId: string, fallbackBoardId: string):
   });
 };
 
-// Story 3.3: Restore a soft-deleted board
+// Story 3.3: Restore a soft-deleted board and move cards back
 export const restoreBoard = async (boardId: string): Promise<Boards> => {
   try {
     return await withRetry(async () => {
@@ -142,6 +191,30 @@ export const restoreBoard = async (boardId: string): Promise<Boards> => {
 
         if (!board.deletedAt) {
           throw new Error("Board is not deleted");
+        }
+
+        // Find all cards that were moved from this board (tracked in metadata)
+        const cardsToRestore = await Notes.findAll({
+          where: sequelize.where(
+            sequelize.cast(sequelize.json('metadata.previousBoardId'), 'text'),
+            boardId
+          ),
+          transaction
+        });
+
+        // Move cards back to restored board and clean up metadata
+        for (const card of cardsToRestore) {
+          const metadata = (card.metadata as any) || {};
+          delete metadata.previousBoardId;
+          delete metadata.movedAt;
+          
+          await card.update(
+            { 
+              boardId: boardId,
+              metadata: Object.keys(metadata).length > 0 ? metadata : null
+            },
+            { transaction }
+          );
         }
 
         // Restore the board
