@@ -37,7 +37,7 @@ export function CanvasControls({
 
   return (
     <div
-      className="fixed bottom-4 right-4 flex items-center gap-2 rounded-lg bg-background/90 p-2 backdrop-blur-sm shadow-lg border"
+      className="fixed bottom-4 right-4 flex items-center gap-2 rounded-lg bg-background/80 p-2 backdrop-blur-md shadow-lg border border-border/50"
       role="toolbar"
       aria-label="Canvas controls"
     >

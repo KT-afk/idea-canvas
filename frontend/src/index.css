@@ -43,6 +43,61 @@
 }
 
 :root {
+  --radius: 0.5rem;
+  
+  /* ✍️ TYPOGRAPHY SYSTEM */
+  /* Serif for headings - elegant, professional */
+  --font-display: 'Playfair Display', Georgia, serif;
+  /* Sans-serif for body - clean, readable */
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Handwriting for note cards - personal, creative */
+  --font-handwriting: 'Caveat', cursive;
+  
+  /* 🎨 PURPLE WORKSHOP THEME (BMAD Recommended - Dark/Light) */
+  /* Deep purple charcoal background */
+  --background: #1C1625;
+  /* Warm purple-tinted white text */
+  --foreground: #F5F0FA;
+  /* Elevated surface - slightly lighter purple */
+  --card: #2A2438;
+  --card-foreground: #F5F0FA;
+  --popover: #2A2438;
+  --popover-foreground: #F5F0FA;
+  /* Primary: Vibrant Purple (brand color) */
+  --primary: #A855F7;
+  --primary-foreground: #FFFFFF;
+  /* Secondary: Muted purple */
+  --secondary: #4C3A5F;
+  --secondary-foreground: #E9D5FF;
+  --muted: #3D2F4D;
+  --muted-foreground: #C4B5D5;
+  --accent: #7C3AED;
+  --accent-foreground: #FFFFFF;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  /* Borders: Subtle purple-gray */
+  --border: #3D2F4D;
+  --input: #3D2F4D;
+  --ring: #A855F7;
+  /* Chart colors: Purple-based palette */
+  --chart-1: #A855F7;
+  --chart-2: #EC4899;
+  --chart-3: #8B5CF6;
+  --chart-4: #D946EF;
+  --chart-5: #7C3AED;
+  /* Sidebar matching main theme */
+  --sidebar: #2A2438;
+  --sidebar-foreground: #F5F0FA;
+  --sidebar-primary: #A855F7;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #4C3A5F;
+  --sidebar-accent-foreground: #E9D5FF;
+  --sidebar-border: #3D2F4D;
+  --sidebar-ring: #A855F7;
+}
+
+/* 🌙 WARM VINTAGE THEME (Your Original - Keep as .theme-warm) */
+:root.theme-warm {
   --radius: 1rem;
   /* Deep Warm Espresso/Charcoal Background */
   --background: oklch(0.16 0.018 55);
@@ -86,45 +141,8 @@
 }
 
 .dark {
-  /* Deep Warm Espresso/Charcoal Background */
-  --background: oklch(0.16 0.018 55);
-  /* Warm Cream Text */
-  --foreground: oklch(0.96 0.015 85);
-  /* Slightly lighter warm card background */
-  --card: oklch(0.22 0.02 55);
-  --card-foreground: oklch(0.96 0.015 85);
-  --popover: oklch(0.22 0.02 55);
-  --popover-foreground: oklch(0.96 0.015 85);
-  /* Primary Accent: Burnt Orange (Bagel Crust) */
-  --primary: oklch(0.65 0.18 50);
-  --primary-foreground: oklch(0.16 0.018 55);
-  /* Secondary: Warm Muted Brown */
-  --secondary: oklch(0.28 0.02 55);
-  --secondary-foreground: oklch(0.96 0.015 85);
-  --muted: oklch(0.28 0.02 55);
-  --muted-foreground: oklch(0.70 0.02 85);
-  --accent: oklch(0.28 0.02 55);
-  --accent-foreground: oklch(0.96 0.015 85);
-  --destructive: oklch(0.65 0.20 25);
-  /* Borders: Subtle warm cream */
-  --border: oklch(0.96 0.015 85 / 12%);
-  --input: oklch(0.96 0.015 85 / 15%);
-  --ring: oklch(0.65 0.18 50);
-  /* Retro Palette: Mustard, Sage, Burnt Orange, Rose, Teal */
-  --chart-1: oklch(0.85 0.16 85);
-  --chart-2: oklch(0.78 0.10 150);
-  --chart-3: oklch(0.72 0.16 50);
-  --chart-4: oklch(0.80 0.12 350);
-  --chart-5: oklch(0.70 0.12 200);
-  /* Sidebar matching main theme */
-  --sidebar: oklch(0.22 0.02 55);
-  --sidebar-foreground: oklch(0.96 0.015 85);
-  --sidebar-primary: oklch(0.65 0.18 50);
-  --sidebar-primary-foreground: oklch(0.16 0.018 55);
-  --sidebar-accent: oklch(0.28 0.02 55);
-  --sidebar-accent-foreground: oklch(0.96 0.015 85);
-  --sidebar-border: oklch(0.96 0.015 85 / 12%);
-  --sidebar-ring: oklch(0.65 0.18 50);
+  /* Same as default purple theme - we're already dark by default */
+  /* If you want a lighter purple variant, we can add it later */
 }
 
 @layer base {
@@ -133,5 +151,25 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+  /* Apply display font to headings */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  /* Specific heading sizes with better hierarchy */
+  h1 {
+    @apply text-4xl font-bold tracking-tight;
+  }
+  h2 {
+    @apply text-3xl font-semibold;
+  }
+  h3 {
+    @apply text-2xl font-semibold;
+  }
+  h4 {
+    @apply text-xl font-medium;
   }
 }
