@@ -15,6 +15,7 @@ interface BoardCanvasProps {
 export interface BoardCanvasHandle {
   resetToHome: () => void;
   fitToContent: () => void; // Story 1.9: New method
+  panToCard: (cardX: number, cardY: number) => void; // Story 5.1: Pan and zoom to specific card
   getPanPosition: () => { x: number; y: number };
 }
 
@@ -139,10 +140,31 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
 
   }, [notes, resetToHome, animateTo]);
 
+  // Story 5.1: Pan and zoom to specific card
+  const panToCard = useCallback((cardX: number, cardY: number) => {
+    // Center the card on screen at 100% zoom
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const screenCenterX = viewportWidth / 2;
+    const screenCenterY = viewportHeight / 2;
+
+    // Calculate card center
+    const cardCenterX = cardX + CARD_WIDTH / 2;
+    const cardCenterY = cardY + CARD_HEIGHT / 2;
+
+    // Calculate pan position to center the card
+    const targetZoom = 1; // Always zoom to 100% for clarity
+    const targetX = screenCenterX - (cardCenterX * targetZoom);
+    const targetY = screenCenterY - (cardCenterY * targetZoom);
+
+    animateTo(targetX, targetY, targetZoom);
+  }, [animateTo]);
+
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
     resetToHome,
     fitToContent,
+    panToCard,
     getPanPosition: () => ({ x: x.get(), y: y.get() }),
   }));
 
