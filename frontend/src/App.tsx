@@ -5,12 +5,15 @@ import { AutosaveIndicator } from "./components/AutosaveIndicator"; // Story 1.8
 import { BoardCanvas, type BoardCanvasHandle } from "./components/BoardCanvas";
 import { CanvasControls } from "./components/CanvasControls";
 import { EmptyState } from "./components/EmptyState";
+import { LoadingState } from "./components/LoadingState";
+import { ErrorState } from "./components/ErrorState";
 import { NoteCard } from "./components/NoteCard";
 import { IdeaCard } from "./components/IdeaCard"; // Story 1.6
 import { PlanCard } from "./components/PlanCard"; // Story 1.6
 import { NoteCardSkeleton } from "./components/NoteCardSkeleton";
 import { NewBoardDialog } from "./components/NewBoardDialog"; // Story 3.1
-import { BoardSwitcher } from "./components/BoardSwitcher"; // Story 3.1
+import { Toolbar } from "./components/Toolbar"; // Professional toolbar
+import { CommandPalette } from "./components/CommandPalette"; // Story 5.1
 import { useNoteMutations } from "./hooks/useNoteMutations";
 import { useBoardMutations } from "./hooks/useBoardMutations"; // Story 3.1
 import { usePreferences } from "./hooks/usePreferences"; // Story 3.4
@@ -53,6 +56,7 @@ function App() {
     data: notes = [],
     isLoading,
     isError,
+    refetch,
   } = useQuery({
     queryKey: ["notes", currentBoardId],
     queryFn: () => fetchNotesByBoard(currentBoardId ?? ""),
@@ -99,9 +103,12 @@ function App() {
   // Story 3.1: New board dialog state
   const [isNewBoardDialogOpen, setIsNewBoardDialogOpen] = useState(false);
 
+  // Story 5.1: Command palette state
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
   // Issue #4: Calculate archived count for badge
   const archivedCount = useMemo(() => {
-    return notes.filter(note => (note.status ?? 'active') === 'archived').length;
+    return notes.filter((note: Note) => (note.status ?? 'active') === 'archived').length;
   }, [notes]);
 
   // Story 1.3 & 1.5: Handle adding note with type selection and optional position (for double-click)
@@ -148,6 +155,13 @@ function App() {
   // Story 1.3: Keyboard shortcut ⌘N/Ctrl+N for new note
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Story 5.1: ⌘K/Ctrl+K for command palette
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(true);
+        return;
+      }
+
       // mod+n: Cmd+N on Mac, Ctrl+N on Windows
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault();
@@ -165,6 +179,18 @@ function App() {
       setNewNoteId(null);
     }
   }, [newNoteId]);
+
+  // Story 5.1: Handle selecting a note from command palette
+  const handleSelectNote = useCallback((noteId: string) => {
+    const note = notes.find((n: Note) => n.id === noteId);
+    if (!note) return;
+
+    // Pan and zoom to bring the note into view
+    canvasRef.current?.panToCard(note.positionX, note.positionY);
+
+    // Bring the note to front for visual emphasis
+    bringToFront(noteId);
+  }, [notes, bringToFront]);
 
   // Story 3.1: Handle creating a new board and switch to it
   const handleCreateBoard = useCallback((name: string) => {
@@ -233,24 +259,48 @@ function App() {
 
   // Handle loading and error states after hooks
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <LoadingState message="Loading your ideas..." />;
   }
 
   if (isError) {
-    return <div>Error loading notes.</div>;
+    return (
+      <ErrorState 
+        title="Couldn't load your notes"
+        message="We're having trouble connecting to the server. Please check your internet connection and try again."
+        onRetry={() => refetch()}
+        onGoHome={() => window.location.reload()}
+      />
+    );
   }
 
   // Issue #1 fix: Show empty state only if no active notes AND no pending creation
-  const hasActiveNotes = notes.some(note => (note.status ?? 'active') !== 'archived');
+  const hasActiveNotes = notes.some((note: Note) => (note.status ?? 'active') !== 'archived');
   if (!hasActiveNotes && !pendingNotePosition) {
     return (
-      <div className="h-screen w-screen bg-background">
-        <EmptyState onAdd={() => handleAddNote('note')} />
+      <div className="h-screen w-screen bg-background flex flex-col">
+        {/* Toolbar even in empty state */}
+        <Toolbar
+          boards={boards}
+          currentBoardId={currentBoardId}
+          onBoardChange={setCurrentBoardId}
+          onSearch={() => setIsCommandPaletteOpen(true)}
+        />
+        <div className="flex-1">
+          <EmptyState onAdd={() => handleAddNote('note')} />
+        </div>
       </div>
     );
   } else {
     return (
       <>
+        {/* Professional Toolbar */}
+        <Toolbar
+          boards={boards}
+          currentBoardId={currentBoardId}
+          onBoardChange={setCurrentBoardId}
+          onSearch={() => setIsCommandPaletteOpen(true)}
+        />
+        
         <BoardCanvas
           ref={canvasRef}
           zoom={zoom}
@@ -271,31 +321,32 @@ function App() {
               )}
               {visibleNotes.map((note: Note) => {
                 // Story 1.6: Conditionally render card type based on note.type
-                  const cardProps = {
-                    id: note.id,
-                    key: note.id,
-                    positionX: note.positionX ?? 0,
-                    positionY: note.positionY ?? 0,
-                    backgroundColor: note.backgroundColor ?? "yellow",
-                    textColor: note.textColor ?? "black",
-                    content: note.content,
-                    type: note.type ?? "note",
-                    status: note.status ?? "active", // Story 2.3
-                    isNew: note.id === newNoteId,
-                    onEdit: (id: string, newContent: string) =>
-                      editNote.mutateAsync({ id, payload: { content: newContent }, boardId: currentBoardId ?? undefined }),
-                    onColorChange: (backgroundColor: string) => updateColor.mutate({id:note.id, backgroundColor, boardId: currentBoardId ?? undefined}),
-                    onTextColorChange: (textColor: string) => updateTextColor.mutate({id:note.id, textColor, boardId: currentBoardId ?? undefined}),
-                    onTypeChange: (type: 'note' | 'idea' | 'plan') => updateType.mutate({id: note.id, type, boardId: currentBoardId ?? undefined}),
-                    onDelete: (id: string) => deleteNote.mutate(id),
-                    onArchive: (id: string) => archiveNote.mutate({id, boardId: currentBoardId ?? undefined}), // Story 2.3
-                    onRestore: (id: string) => restoreNote.mutate({id, boardId: currentBoardId ?? undefined}), // Story 2.3
-                    zIndex: order[note.id] ?? 0,
-                    onBringToFront: () => bringToFront(note.id),
-                    onDragEndSave: (id: string, positionX: number, positionY: number) =>
-                      updatePosition.mutate({ id, positionX, positionY, boardId: currentBoardId ?? undefined }),
-                    onNewNoteFocused: handleClearNewNote,
-                  };
+                const cardProps = {
+                  id: note.id,
+                  key: note.id,
+                  positionX: note.positionX ?? 0,
+                  positionY: note.positionY ?? 0,
+                  backgroundColor: note.backgroundColor ?? "yellow",
+                  textColor: note.textColor ?? "black",
+                  content: note.content,
+                  type: note.type ?? "note",
+                  status: note.status ?? "active", // Story 2.3
+                  isNew: note.id === newNoteId,
+                  zoom: zoom, // Pass zoom for coordinate conversion during drag
+                  onEdit: (id: string, newContent: string) =>
+                    editNote.mutateAsync({ id, payload: { content: newContent }, boardId: currentBoardId ?? undefined }),
+                  onColorChange: (backgroundColor: string) => updateColor.mutate({id:note.id, backgroundColor, boardId: currentBoardId ?? undefined}),
+                  onTextColorChange: (textColor: string) => updateTextColor.mutate({id:note.id, textColor, boardId: currentBoardId ?? undefined}),
+                  onTypeChange: (type: 'note' | 'idea' | 'plan') => updateType.mutate({id: note.id, type, boardId: currentBoardId ?? undefined}),
+                  onDelete: (id: string) => deleteNote.mutate(id),
+                  onArchive: (id: string) => archiveNote.mutate({id, boardId: currentBoardId ?? undefined}), // Story 2.3
+                  onRestore: (id: string) => restoreNote.mutate({id, boardId: currentBoardId ?? undefined}), // Story 2.3
+                  zIndex: order[note.id] ?? 0,
+                  onBringToFront: () => bringToFront(note.id),
+                  onDragEndSave: (id: string, positionX: number, positionY: number) =>
+                    updatePosition.mutate({ id, positionX, positionY, boardId: currentBoardId ?? undefined }),
+                  onNewNoteFocused: handleClearNewNote,
+                };
 
                 // Render the appropriate card component based on type
                 if (note.type === 'idea') {
@@ -309,15 +360,6 @@ function App() {
             </AnimatePresence>
           </div>
         </BoardCanvas>
-
-        {/* Story 3.1: Board Switcher - Top Left */}
-        <div className="fixed top-4 left-4 z-10">
-          <BoardSwitcher
-            boards={boards}
-            currentBoardId={currentBoardId}
-            onBoardChange={setCurrentBoardId}
-          />
-        </div>
 
         <CanvasControls
           zoom={zoom}
@@ -343,6 +385,14 @@ function App() {
           onOpenChange={setIsNewBoardDialogOpen}
           onCreateBoard={handleCreateBoard}
           isLoading={createBoard.isPending}
+        />
+
+        {/* Story 5.1: Command Palette */}
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          notes={notes}
+          onSelectNote={handleSelectNote}
         />
       </>
     );
