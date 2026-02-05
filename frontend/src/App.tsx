@@ -392,6 +392,7 @@ function App() {
           isOpen={isCommandPaletteOpen}
           onClose={() => setIsCommandPaletteOpen(false)}
           notes={notes}
+          boards={boards}
           onSelectNote={handleSelectNote}
         />
       </>

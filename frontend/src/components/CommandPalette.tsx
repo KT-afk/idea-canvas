@@ -1,13 +1,15 @@
 import { useEffect, useState, useMemo } from "react";
 import { Command } from "cmdk";
-import { Search, StickyNote, Lightbulb, FileText, Sparkles } from "lucide-react";
+import { Search, StickyNote, Lightbulb, FileText, Sparkles, Filter, X } from "lucide-react";
 import Fuse from "fuse.js";
 import type { Note } from "../types/types";
+import type { Board } from "../types/types";
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   notes: Note[];
+  boards: Board[];
   onSelectNote: (noteId: string) => void;
 }
 
@@ -15,10 +17,16 @@ export function CommandPalette({
   isOpen,
   onClose,
   notes,
+  boards,
   onSelectNote,
 }: CommandPaletteProps) {
   const [search, setSearch] = useState("");
   const [searchMode, setSearchMode] = useState<"plain" | "smart">("plain");
+  
+  // Filter state
+  const [filterBoard, setFilterBoard] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<Note["type"] | null>(null);
+  const [filterStatus, setFilterStatus] = useState<Note["status"] | null>(null);
 
   // Initialize Fuse.js for fuzzy search
   const fuse = useMemo(() => {
@@ -46,28 +54,56 @@ export function CommandPalette({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  // Filter notes based on search query and mode
+  // Filter notes based on search query, mode, and filters
   const filteredNotes = useMemo(() => {
-    if (!search) return notes;
+    let results = notes;
 
-    if (searchMode === "plain") {
-      // Plain keyword search
-      const searchLower = search.toLowerCase();
-      return notes.filter((note) =>
-        note.content.toLowerCase().includes(searchLower)
-      );
-    } else {
-      // Smart fuzzy search
-      const results = fuse.search(search);
-      return results.map((result) => result.item);
+    // Apply search (plain or smart)
+    if (search) {
+      if (searchMode === "plain") {
+        // Plain keyword search
+        const searchLower = search.toLowerCase();
+        results = results.filter((note) =>
+          note.content.toLowerCase().includes(searchLower)
+        );
+      } else {
+        // Smart fuzzy search
+        const fuseResults = fuse.search(search);
+        results = fuseResults.map((result) => result.item);
+      }
     }
-  }, [notes, search, searchMode, fuse]);
+
+    // Apply board filter
+    if (filterBoard) {
+      results = results.filter((note) => note.boardId === filterBoard);
+    }
+
+    // Apply type filter
+    if (filterType) {
+      results = results.filter((note) => (note.type ?? "note") === filterType);
+    }
+
+    // Apply status filter
+    if (filterStatus) {
+      results = results.filter((note) => (note.status ?? "active") === filterStatus);
+    }
+
+    return results;
+  }, [notes, search, searchMode, fuse, filterBoard, filterType, filterStatus]);
 
   const handleSelect = (noteId: string) => {
     onSelectNote(noteId);
     onClose();
     setSearch(""); // Reset search
   };
+
+  const clearAllFilters = () => {
+    setFilterBoard(null);
+    setFilterType(null);
+    setFilterStatus(null);
+  };
+
+  const hasActiveFilters = filterBoard || filterType || filterStatus;
 
   if (!isOpen) return null;
 
@@ -99,7 +135,7 @@ export function CommandPalette({
           </div>
 
           {/* Mode Toggle Row */}
-          <div className="flex items-center gap-2 px-4 pb-3">
+          <div className="flex items-center gap-2 px-4 pb-2">
             <button
               onClick={() => setSearchMode("plain")}
               className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
@@ -123,6 +159,63 @@ export function CommandPalette({
               Smart
               <span className="text-[10px] opacity-75">(typos, flexible)</span>
             </button>
+          </div>
+
+          {/* Filters Row */}
+          <div className="flex flex-wrap items-center gap-2 px-4 pb-3">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Filter className="w-3 h-3" />
+              <span>Filters:</span>
+            </div>
+
+            {/* Board Filter */}
+            <select
+              value={filterBoard ?? ""}
+              onChange={(e) => setFilterBoard(e.target.value || null)}
+              className="px-2 py-1 text-xs rounded-md border border-border/50 bg-background text-foreground hover:bg-muted transition-colors cursor-pointer"
+            >
+              <option value="">All Boards</option>
+              {boards.map((board) => (
+                <option key={board.id} value={board.id}>
+                  {board.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Type Filter */}
+            <select
+              value={filterType ?? ""}
+              onChange={(e) => setFilterType((e.target.value || null) as Note["type"] | null)}
+              className="px-2 py-1 text-xs rounded-md border border-border/50 bg-background text-foreground hover:bg-muted transition-colors cursor-pointer"
+            >
+              <option value="">All Types</option>
+              <option value="note">Note</option>
+              <option value="idea">Idea</option>
+              <option value="plan">Plan</option>
+            </select>
+
+            {/* Status Filter */}
+            <select
+              value={filterStatus ?? ""}
+              onChange={(e) => setFilterStatus((e.target.value || null) as Note["status"] | null)}
+              className="px-2 py-1 text-xs rounded-md border border-border/50 bg-background text-foreground hover:bg-muted transition-colors cursor-pointer"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="archived">Archived</option>
+              <option value="graduated">Graduated</option>
+            </select>
+
+            {/* Clear Filters */}
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
+              >
+                <X className="w-3 h-3" />
+                Clear
+              </button>
+            )}
           </div>
         </div>
 
