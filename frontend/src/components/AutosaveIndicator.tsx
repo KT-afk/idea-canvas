@@ -124,7 +124,7 @@ export function AutosaveIndicator() {
 
   return (
     <div
-      className="fixed bottom-4 left-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-background/90 backdrop-blur-sm shadow-lg border text-sm transition-opacity duration-200"
+      className="fixed bottom-4 left-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-background/80 backdrop-blur-md shadow-lg border border-border/50 text-sm transition-opacity duration-200"
       role="status"
       aria-live="polite"
       aria-atomic="true"

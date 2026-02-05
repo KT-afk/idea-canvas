@@ -17,6 +17,10 @@ export async function fetchNotes(): Promise<Note[]> {
 
 // ✅ Fetch notes by board
 export async function fetchNotesByBoard(boardId: string) {
+  // 🧪 DEMO MODE: Uncomment to test loading/error states
+  // await new Promise(resolve => setTimeout(resolve, 2000)); // Test LoadingState (2s delay)
+  // throw new Error("Demo error"); // Test ErrorState (simulated failure)
+  
   const res = await fetch(`${API_URL}/api/notes/board/${boardId}`);
   if (!res.ok) throw new Error("Failed to fetch notes");
   const data = await res.json();

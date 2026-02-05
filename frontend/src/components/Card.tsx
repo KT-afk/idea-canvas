@@ -1,5 +1,5 @@
 import { getColorClass } from "@/utilities/utils";
-import { motion, useDragControls, useMotionValue } from "framer-motion";
+import { motion, useMotionValue } from "framer-motion";
 import { Archive, ClipboardList, Lightbulb, PaintBucket, RotateCcw, StickyNote, Type, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ColorPickerPopover } from "./Popover";
@@ -28,6 +28,7 @@ export interface CardProps {
   backgroundColor: string;
   textColor: string;
   zIndex: number;
+  zoom?: number; // Canvas zoom level for coordinate conversion
   type?: 'note' | 'idea' | 'plan'; // Story 1.3: Card type
   status?: 'active' | 'archived' | 'graduated'; // Story 2.3: Card status
   isNew?: boolean; // Story 1.3: Flag for newly created notes to trigger auto-focus
@@ -53,6 +54,7 @@ export function Card({
   backgroundColor,
   textColor,
   zIndex,
+  zoom = 1,
   type = 'note',
   status = 'active',
   isNew = false,
@@ -75,10 +77,18 @@ export function Card({
   const [isKeyboardMoving, setIsKeyboardMoving] = useState(false); // Story 1.4: Visual feedback for keyboard movement
   const [ariaAnnouncement, setAriaAnnouncement] = useState(''); // Story 1.4: Screen reader announcements
   const [hasUserInteracted, setHasUserInteracted] = useState(false); // Story 1.3: Track if user has typed
+  const [justFinishedDrag, setJustFinishedDrag] = useState(false); // Prevent flicker after drag
   const noteRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null); // Story 1.3: Ref for auto-focus
   const lastSavedPos = useRef({ positionX, positionY });
-  const dragControls = useDragControls();
+  const dragStateRef = useRef<{ startX: number; startY: number; cardX: number; cardY: number } | null>(null);
+  const zoomRef = useRef(zoom);
+  const isDraggingRef = useRef(false);
+  
+  // Keep zoom ref updated
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
 
   // Use motion values for smooth dragging without re-renders
   // Cards use CANVAS coordinates because they're inside transformed BoardCanvas
@@ -86,19 +96,21 @@ export function Card({
   const motionY = useMotionValue(positionY);
 
   useEffect(() => {
-    // Only update if not dragging AND position actually changed significantly
-    if (!isDragging) {
-      const deltaX = Math.abs(positionX - lastSavedPos.current.positionX);
-      const deltaY = Math.abs(positionY - lastSavedPos.current.positionY);
+    // Don't sync position from props if we're dragging or just finished dragging
+    if (isDragging || justFinishedDrag) return;
 
-      // Only update if position changed by more than 2px (avoids rounding issues)
-      if (deltaX > 2 || deltaY > 2) {
-        motionX.set(positionX);
-        motionY.set(positionY);
-        lastSavedPos.current = { positionX, positionY };
-      }
+    const currentX = motionX.get();
+    const currentY = motionY.get();
+    const deltaX = Math.abs(positionX - currentX);
+    const deltaY = Math.abs(positionY - currentY);
+
+    // Only update if position changed significantly
+    if (deltaX > 2 || deltaY > 2) {
+      motionX.set(positionX);
+      motionY.set(positionY);
+      lastSavedPos.current = { positionX, positionY };
     }
-  }, [positionX, positionY, isDragging, motionX, motionY]);
+  }, [positionX, positionY, isDragging, justFinishedDrag, motionX, motionY]);
   
   useEffect(() => {
     setEditableText(content);
@@ -114,6 +126,90 @@ export function Card({
       onNewNoteFocused?.(id);
     }
   }, [isNew, id, onNewNoteFocused]);
+
+  // Custom drag handlers using native events for maximum performance
+  useEffect(() => {
+    const element = noteRef.current;
+    if (!element) return;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      // Don't start drag on interactive elements
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'TEXTAREA' || 
+          target.tagName === 'BUTTON' ||
+          target.closest('button')) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      
+      isDraggingRef.current = true;
+      setIsDragging(true);
+      onBringToFront(id);
+      
+      element.setPointerCapture(e.pointerId);
+      
+      dragStateRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        cardX: motionX.get(),
+        cardY: motionY.get()
+      };
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isDraggingRef.current || !dragStateRef.current) return;
+      
+      const dragState = dragStateRef.current;
+      const deltaX = e.clientX - dragState.startX;
+      const deltaY = e.clientY - dragState.startY;
+      
+      const canvasX = dragState.cardX + (deltaX / zoomRef.current);
+      const canvasY = dragState.cardY + (deltaY / zoomRef.current);
+      
+      motionX.set(canvasX);
+      motionY.set(canvasY);
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (!isDraggingRef.current || !dragStateRef.current) return;
+      
+      element.releasePointerCapture(e.pointerId);
+      
+      const finalX = motionX.get();
+      const finalY = motionY.get();
+      
+      // Update lastSavedPos to prevent position reset
+      lastSavedPos.current = { positionX: finalX, positionY: finalY };
+      
+      // Save to backend
+      onDragEndSave(id, Math.round(finalX), Math.round(finalY));
+      
+      isDraggingRef.current = false;
+      setIsDragging(false);
+      dragStateRef.current = null;
+      
+      // Prevent position sync from props for 100ms after drag ends
+      // This avoids flicker when server hasn't responded yet
+      setJustFinishedDrag(true);
+      setTimeout(() => {
+        setJustFinishedDrag(false);
+      }, 100);
+    };
+
+    element.addEventListener('pointerdown', handlePointerDown);
+    element.addEventListener('pointermove', handlePointerMove);
+    element.addEventListener('pointerup', handlePointerUp);
+    element.addEventListener('pointercancel', handlePointerUp);
+
+    return () => {
+      element.removeEventListener('pointerdown', handlePointerDown);
+      element.removeEventListener('pointermove', handlePointerMove);
+      element.removeEventListener('pointerup', handlePointerUp);
+      element.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, [id, onBringToFront, onDragEndSave, motionX, motionY]);
 
   // Story 1.3: Handle blur - save if content exists, delete if empty
   // Only delete if user has actually interacted (typed something then deleted it)
@@ -245,60 +341,32 @@ export function Card({
       aria-label={`Note: ${editableText.substring(0, 30)}${editableText.length > 30 ? '...' : ''}`}
       tabIndex={0}
       onKeyDown={handleCardKeyDown}
+      initial={isNew ? { scale: 0, opacity: 0 } : false}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.8, opacity: 0 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
       style={{
         position: "absolute",
+        left: 0,
+        top: 0,
         x: motionX,
         y: motionY,
         zIndex: zIndex ?? 0,
         backgroundColor: getColorClass(backgroundColor),
         color: getColorClass(textColor),
         pointerEvents: "auto", // Issue #13 fix: Ensure notes capture pointer events
-        cursor: isDragging ? 'grabbing' : undefined, // Story 1.4: Cursor during drag
+        cursor: isDragging ? 'grabbing' : 'grab', // Story 1.4: Cursor during drag
         opacity: status === 'archived' ? 0.6 : 1, // Story 2.3: Grayed out for archived
         filter: status === 'archived' ? 'grayscale(80%)' : undefined, // Issue #6: Stronger grayscale for clearer distinction
+        touchAction: 'none', // Prevent default touch behaviors
+        transition: isDragging ? 'none' : undefined, // Disable transitions during drag for instant response
       }}
-      drag
-      dragControls={dragControls}
-      dragListener={false}
-      dragMomentum={false}
-      dragElastic={0}
-      // Issue #13 fix: Remove dragConstraints so notes can move anywhere in canvas space
-      dragTransition={{ bounceStiffness: 600, bounceDamping: 30 }}
-      whileDrag={{ scale: 1.05, rotate: 2 }}
-      onDragStart={() => {
-        setIsDragging(true);
-        onBringToFront(id);
-      }}
-      onDragEnd={() => {
-        // Get the final position from Framer Motion's drag info
-        const finalX = motionX.get();
-        const finalY = motionY.get();
-
-        // Update last saved position to prevent reset
-        lastSavedPos.current = { positionX: finalX, positionY: finalY };
-
-        // Save to backend (already in canvas coordinates)
-        onDragEndSave(id, Math.round(finalX), Math.round(finalY));
-
-        // Allow props to take over again
-        setIsDragging(false);
-      }}
-      className={`relative p-4 rounded-xl w-48 shadow-[0_3px_10px_rgb(0,0,0,0.2)] hover:shadow-[0_8px_20px_rgb(0,0,0,0.3)] transition-shadow duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${isKeyboardMoving ? 'ring-2 ring-primary/50' : ''} ${customClassName}`}
+      className={`relative p-4 rounded-lg w-52 shadow-lg hover:shadow-2xl transition-shadow duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${isKeyboardMoving ? 'ring-2 ring-primary/50' : ''} ${customClassName}`}
     >
       {/* Story 1.4: ARIA live region for screen reader announcements */}
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {ariaAnnouncement}
       </span>
-
-      {/* Story 1.4: Invisible drag handle area - top section is draggable
-          Height is 44px (h-11) to meet mobile touch target requirements (NFR17) */}
-      <div
-        className="absolute top-0 left-0 right-0 h-11 cursor-grab active:cursor-grabbing z-0"
-        onPointerDown={(e) => {
-          e.stopPropagation(); // Prevent BoardCanvas from capturing this event
-          dragControls.start(e);
-        }}
-      />
 
       <div className="absolute top-2.5 left-2.5 flex gap-1.5 z-10">
         <ColorPickerPopover 
@@ -338,12 +406,27 @@ export function Card({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* BMAD UX: Type badge in top-right corner */}
+      <div className="absolute top-2.5 right-10 z-10">
+        <span 
+          className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase rounded-full ${
+            type === 'idea' ? 'bg-yellow-500 text-yellow-950' :
+            type === 'plan' ? 'bg-blue-500 text-blue-950' :
+            'bg-gray-500 text-gray-950'
+          }`}
+          style={{ fontFamily: 'var(--font-body)' }}
+        >
+          <TypeIcon className="w-2.5 h-2.5" />
+          {type}
+        </span>
+      </div>
+
       <div className="h-px bg-black/15 mb-4 mt-8 -mx-4" />
 
       <textarea
         ref={textareaRef}
         style={{color: getColorClass(textColor)}}
-        className="w-full h-24 bg-transparent resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 rounded text-base leading-relaxed"
+        className="w-full h-24 bg-transparent resize-none border-0 focus:outline-none focus:ring-0 text-base leading-relaxed placeholder:text-current placeholder:opacity-40"
         value={editableText}
         onChange={(e) => {
           setEditableText(e.target.value);
@@ -359,7 +442,7 @@ export function Card({
       {(status === 'archived' || (!isNew && editableText.trim() !== '')) && (
         <button
           onClick={() => status === 'archived' ? onRestore(id) : onArchive(id)}
-          className="absolute bottom-2 left-2 flex items-center gap-1 text-xs opacity-60 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none transition-opacity rounded px-1.5 py-0.5 z-10 cursor-pointer"
+          className="absolute bottom-2 left-2 flex items-center gap-1 text-xs bg-black/5 hover:bg-black/10 px-2 py-1 rounded-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none transition-colors z-10 cursor-pointer"
           aria-label={status === 'archived' ? 'Restore this item' : 'Archive this item'}
         >
           {status === 'archived' ? (
@@ -379,7 +462,7 @@ export function Card({
       {/* Story 1.5: Interactive type toggle button - placed after textarea for proper tab order */}
       <button
         onClick={handleTypeToggle}
-        className="absolute bottom-2 right-2 flex items-center gap-1 text-xs opacity-60 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none transition-opacity rounded px-1.5 py-0.5 z-10 cursor-pointer"
+        className="absolute bottom-2 right-2 flex items-center gap-1 text-xs bg-black/5 hover:bg-black/10 px-2 py-1 rounded-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none transition-colors z-10 cursor-pointer"
         aria-label={`Type: ${type}. Click to toggle to ${getNextType()}`}
       >
         <TypeIcon className="w-3 h-3" />
