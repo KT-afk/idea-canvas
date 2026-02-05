@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Command } from "cmdk";
-import { Search, StickyNote, Lightbulb, FileText } from "lucide-react";
+import { Search, StickyNote, Lightbulb, FileText, Sparkles } from "lucide-react";
+import Fuse from "fuse.js";
 import type { Note } from "../types/types";
 
 interface CommandPaletteProps {
@@ -17,6 +18,19 @@ export function CommandPalette({
   onSelectNote,
 }: CommandPaletteProps) {
   const [search, setSearch] = useState("");
+  const [searchMode, setSearchMode] = useState<"plain" | "smart">("plain");
+
+  // Initialize Fuse.js for fuzzy search
+  const fuse = useMemo(() => {
+    return new Fuse(notes, {
+      keys: ["content"],
+      threshold: 0.4, // 0 = exact match, 1 = match anything
+      ignoreLocation: true, // Search entire string
+      minMatchCharLength: 2, // Min 2 chars to match
+      includeScore: true,
+      useExtendedSearch: false,
+    });
+  }, [notes]);
 
   // Handle Escape key
   useEffect(() => {
@@ -32,12 +46,22 @@ export function CommandPalette({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  // Filter notes based on search query
-  const filteredNotes = notes.filter((note) => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    return note.content.toLowerCase().includes(searchLower);
-  });
+  // Filter notes based on search query and mode
+  const filteredNotes = useMemo(() => {
+    if (!search) return notes;
+
+    if (searchMode === "plain") {
+      // Plain keyword search
+      const searchLower = search.toLowerCase();
+      return notes.filter((note) =>
+        note.content.toLowerCase().includes(searchLower)
+      );
+    } else {
+      // Smart fuzzy search
+      const results = fuse.search(search);
+      return results.map((result) => result.item);
+    }
+  }, [notes, search, searchMode, fuse]);
 
   const handleSelect = (noteId: string) => {
     onSelectNote(noteId);
@@ -54,18 +78,52 @@ export function CommandPalette({
         shouldFilter={false} // We handle filtering manually
       >
         {/* Search Input */}
-        <div className="flex items-center gap-3 px-4 border-b border-border/50">
-          <Search className="w-5 h-5 text-muted-foreground" />
-          <Command.Input
-            value={search}
-            onValueChange={setSearch}
-            placeholder="Search notes and ideas..."
-            className="flex-1 py-4 bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground"
-            autoFocus
-          />
-          <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs font-mono text-muted-foreground bg-muted rounded">
-            ESC
-          </kbd>
+        <div className="flex flex-col border-b border-border/50">
+          {/* Input Row */}
+          <div className="flex items-center gap-3 px-4">
+            <Search className="w-5 h-5 text-muted-foreground" />
+            <Command.Input
+              value={search}
+              onValueChange={setSearch}
+              placeholder={
+                searchMode === "smart"
+                  ? "Smart search: typos, word order, partial matches..."
+                  : "Search notes and ideas..."
+              }
+              className="flex-1 py-4 bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground"
+              autoFocus
+            />
+            <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs font-mono text-muted-foreground bg-muted rounded">
+              ESC
+            </kbd>
+          </div>
+
+          {/* Mode Toggle Row */}
+          <div className="flex items-center gap-2 px-4 pb-3">
+            <button
+              onClick={() => setSearchMode("plain")}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                searchMode === "plain"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              <Search className="w-3 h-3" />
+              Plain
+            </button>
+            <button
+              onClick={() => setSearchMode("smart")}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                searchMode === "smart"
+                  ? "bg-primary/10 text-primary ring-1 ring-primary/30"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              <Sparkles className="w-3 h-3" />
+              Smart
+              <span className="text-[10px] opacity-75">(typos, flexible)</span>
+            </button>
+          </div>
         </div>
 
         {/* Results List */}
@@ -172,7 +230,15 @@ export function CommandPalette({
               Select
             </span>
           </div>
-          <span>{filteredNotes.length} results</span>
+          <div className="flex items-center gap-2">
+            <span>{filteredNotes.length} results</span>
+            {searchMode === "smart" && (
+              <span className="flex items-center gap-1 text-primary">
+                <Sparkles className="w-3 h-3" />
+                Smart
+              </span>
+            )}
+          </div>
         </div>
       </Command>
     </div>
