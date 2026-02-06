@@ -253,29 +253,109 @@ export function CommandPalette({
 
         {/* Results List */}
         <Command.List className="max-h-[400px] overflow-y-auto p-2">
-          {/* Empty State */}
+          {/* Empty State - No Results */}
           {filteredNotes.length === 0 && search && (
-            <Command.Empty className="py-8 text-center">
-              <div className="flex flex-col items-center gap-2">
+            <Command.Empty className="py-8 px-4 text-center">
+              <div className="flex flex-col items-center gap-3">
                 <Search className="w-8 h-8 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">
-                  No results found for "{search}"
-                </p>
-                <p className="text-xs text-muted-foreground/75">
-                  Try different keywords or create a new note
-                </p>
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    No results found for "{search}"
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Try different keywords or adjust filters
+                  </p>
+                </div>
+                
+                {/* Story 5.6: Search tips when no results */}
+                <div className="mt-2 p-3 bg-muted/50 rounded-lg text-left w-full max-w-sm">
+                  <p className="text-xs font-medium text-foreground mb-2">💡 Search Tips:</p>
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    {searchMode === "plain" && (
+                      <>
+                        <li>• Try Smart search for typo tolerance</li>
+                        <li>• Check if filters are too restrictive</li>
+                        <li>• Use partial words: "prod" finds "productivity"</li>
+                      </>
+                    )}
+                    {searchMode === "smart" && (
+                      <>
+                        <li>• Smart search handles typos automatically</li>
+                        <li>• Try removing some filters</li>
+                        <li>• Use broader keywords</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
               </div>
             </Command.Empty>
           )}
 
-          {/* Empty State - No Search */}
+          {/* Empty State - No Search Query */}
           {filteredNotes.length === 0 && !search && (
-            <div className="py-8 text-center">
-              <div className="flex flex-col items-center gap-2">
-                <Search className="w-8 h-8 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">
-                  Start typing to search your notes and ideas
-                </p>
+            <div className="py-8 px-4">
+              <div className="flex flex-col items-center gap-4">
+                <Search className="w-10 h-10 text-muted-foreground/50" />
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    Search your notes and ideas
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Start typing to find what you're looking for
+                  </p>
+                </div>
+
+                {/* Story 5.6: Helpful tips and keyboard shortcuts */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md mt-2">
+                  {/* Search Modes */}
+                  <div className="p-3 bg-muted/50 rounded-lg text-left">
+                    <p className="text-xs font-medium text-foreground mb-2 flex items-center gap-1">
+                      <Search className="w-3 h-3" />
+                      Search Modes
+                    </p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li><span className="font-medium">Plain:</span> Exact matches</li>
+                      <li><span className="font-medium">Smart:</span> Typos, flexible</li>
+                    </ul>
+                  </div>
+
+                  {/* Keyboard Shortcuts */}
+                  <div className="p-3 bg-muted/50 rounded-lg text-left">
+                    <p className="text-xs font-medium text-foreground mb-2 flex items-center gap-1">
+                      ⌨️ Shortcuts
+                    </p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li><kbd className="text-[10px] px-1 py-0.5 bg-background rounded">↑↓</kbd> Navigate</li>
+                      <li><kbd className="text-[10px] px-1 py-0.5 bg-background rounded">↵</kbd> Open note</li>
+                      <li><kbd className="text-[10px] px-1 py-0.5 bg-background rounded">⌘C</kbd> Copy content</li>
+                      <li><kbd className="text-[10px] px-1 py-0.5 bg-background rounded">ESC</kbd> Close</li>
+                    </ul>
+                  </div>
+
+                  {/* Filters */}
+                  <div className="p-3 bg-muted/50 rounded-lg text-left">
+                    <p className="text-xs font-medium text-foreground mb-2 flex items-center gap-1">
+                      <Filter className="w-3 h-3" />
+                      Filters
+                    </p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>Filter by board, type, or status</li>
+                      <li>Combine multiple filters</li>
+                    </ul>
+                  </div>
+
+                  {/* Pro Tips */}
+                  <div className="p-3 bg-muted/50 rounded-lg text-left">
+                    <p className="text-xs font-medium text-foreground mb-2 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      Pro Tips
+                    </p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>Smart search finds similar words</li>
+                      <li>Match count shows relevance</li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           )}
