@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Command } from "cmdk";
 import { Search, StickyNote, Lightbulb, FileText, Sparkles, Filter, X } from "lucide-react";
 import Fuse from "fuse.js";
+import { toast } from "sonner";
 import type { Note } from "../types/types";
 import type { Board } from "../types/types";
 
@@ -28,6 +29,9 @@ export function CommandPalette({
   const [filterType, setFilterType] = useState<Note["type"] | null>(null);
   const [filterStatus, setFilterStatus] = useState<Note["status"] | null>(null);
 
+  // Track currently selected note ID for keyboard shortcuts
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+
   // Initialize Fuse.js for fuzzy search
   const fuse = useMemo(() => {
     return new Fuse(notes, {
@@ -39,20 +43,6 @@ export function CommandPalette({
       useExtendedSearch: false,
     });
   }, [notes]);
-
-  // Handle Escape key
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen, onClose]);
 
   // Filter notes based on search query, mode, and filters
   const filteredNotes = useMemo(() => {
@@ -91,6 +81,38 @@ export function CommandPalette({
     return results;
   }, [notes, search, searchMode, fuse, filterBoard, filterType, filterStatus]);
 
+  // Handle Escape key and keyboard shortcuts
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyboard = (e: KeyboardEvent) => {
+      // Escape to close
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      // ⌘C or Ctrl+C to copy
+      if ((e.metaKey || e.ctrlKey) && e.key === "c" && selectedNoteId) {
+        e.preventDefault();
+        const note = filteredNotes.find((n) => n.id === selectedNoteId);
+        if (note) {
+          navigator.clipboard.writeText(note.content).then(() => {
+            toast.success("Copied to clipboard!", {
+              description: note.content.slice(0, 50) + (note.content.length > 50 ? "..." : ""),
+            });
+          }).catch(() => {
+            toast.error("Failed to copy to clipboard");
+          });
+        }
+        return;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyboard);
+    return () => document.removeEventListener("keydown", handleKeyboard);
+  }, [isOpen, onClose, selectedNoteId, filteredNotes]);
+
   const handleSelect = (noteId: string) => {
     onSelectNote(noteId);
     onClose();
@@ -112,6 +134,7 @@ export function CommandPalette({
       <Command
         className="w-full max-w-2xl bg-card border border-border/50 rounded-lg shadow-2xl overflow-hidden"
         shouldFilter={false} // We handle filtering manually
+        onValueChange={(value) => setSelectedNoteId(value)}
       >
         {/* Search Input */}
         <div className="flex flex-col border-b border-border/50">
@@ -313,14 +336,18 @@ export function CommandPalette({
 
         {/* Footer Hint */}
         <div className="flex items-center justify-between px-4 py-2 border-t border-border/50 bg-muted/30 text-xs text-muted-foreground">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 font-mono bg-background rounded">↑↓</kbd>
               Navigate
             </span>
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 font-mono bg-background rounded">↵</kbd>
-              Select
+              Open
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 font-mono bg-background rounded">⌘C</kbd>
+              Copy
             </span>
           </div>
           <div className="flex items-center gap-2">
