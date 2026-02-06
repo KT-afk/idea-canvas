@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { BoardSwitcher } from "./BoardSwitcher";
 import { Button } from "./ui/button";
+import { FindConnectionsButton } from "./connections/FindConnectionsButton";
 import type { Board } from "../types/types";
 
 interface ToolbarProps {
@@ -8,6 +9,7 @@ interface ToolbarProps {
   currentBoardId: string | null;
   onBoardChange: (boardId: string) => void;
   onSearch?: () => void;
+  onFindConnections?: () => void; // Story 6.3
 }
 
 export function Toolbar({
@@ -15,6 +17,7 @@ export function Toolbar({
   currentBoardId,
   onBoardChange,
   onSearch,
+  onFindConnections,
 }: ToolbarProps) {
   return (
     <div 
@@ -47,6 +50,14 @@ export function Toolbar({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* Find Connections Button - Story 6.3 */}
+        {onFindConnections && (
+          <FindConnectionsButton 
+            onClick={onFindConnections}
+            disabled={!currentBoardId}
+          />
+        )}
+
         {/* Search Button - Cmd+K hint */}
         <Button
           variant="ghost"
