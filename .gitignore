@@ -25,5 +25,14 @@ _bmad-output/
 .trae/
 .windsurf/
 
-# Documentation (if generated)
-docs/
+# Development planning documents (keep in repo for reference)
+# Uncomment below if you want to hide these files from git:
+# CODE_REVIEW_*.md
+# TESTING_*.md
+# STORY_*.md
+# QUICK_FIXES_*.md
+# DRAG_FIX_SUMMARY.md
+# TEST_REPORT_*.md
+# TUTOR_MODE.md
+# understanding.md
+# verify_*.sh
