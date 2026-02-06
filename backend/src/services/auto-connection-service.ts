@@ -1,13 +1,16 @@
 /**
  * Auto-Connection Service
  * Epic 6, Story 6.2: Auto-Connection Engine
+ * Epic 6, Story 6.5: AI-Powered Connections
  * 
  * Analyzes card content and suggests connections based on similarity
+ * Uses AI (OpenAI GPT) when available, falls back to keyword matching
  */
 
 import Notes from "../models/NOTES";
 import Connections from "../models/CONNECTIONS";
 import { Op } from "sequelize";
+import { analyzeConnectionsWithAI, isAIAvailable, estimateAICost, type AIConnectionSuggestion } from "./ai-connection-service";
 
 interface ConnectionSuggestion {
   sourceCardId: string;
@@ -66,12 +69,14 @@ function findCommonKeywords(wordsA: string[], wordsB: string[]): string[] {
 
 /**
  * Analyze cards on a board and suggest connections
- * Uses simple keyword matching with Jaccard similarity
+ * Story 6.5: Uses AI (OpenAI GPT) when available
+ * Story 6.2: Falls back to keyword matching with Jaccard similarity
  * Filters out existing connections
  */
 export async function suggestConnections(
   boardId: string,
-  minConfidence: number = 0.2
+  minConfidence: number = 0.2,
+  useAI: boolean = isAIAvailable() // Auto-detect AI availability or force keyword matching
 ): Promise<ConnectionSuggestion[]> {
   // Get all active cards on the board
   const cards = await Notes.findAll({
@@ -102,6 +107,67 @@ export async function suggestConnections(
     existingPairs.add(`${targetId}-${sourceId}`);
   });
   
+  let suggestions: ConnectionSuggestion[] = [];
+  
+  // Try AI analysis first if enabled
+  if (useAI && isAIAvailable()) {
+    try {
+      console.log(`[AI] Analyzing ${cards.length} cards (estimated cost: $${estimateAICost(cards.length).toFixed(4)})`);
+      
+      const aiSuggestions = await analyzeConnectionsWithAI(
+        cards.map(c => ({ id: c.id, content: c.content, type: c.type as 'note' | 'idea' | 'plan' }))
+      );
+      
+      // Filter out existing connections
+      const filteredAISuggestions = aiSuggestions.filter(suggestion => {
+        const pairKey = `${suggestion.sourceCardId}-${suggestion.targetCardId}`;
+        return !existingPairs.has(pairKey);
+      });
+      
+      // Map AI suggestions to ConnectionSuggestion format
+      suggestions = filteredAISuggestions.map(aiSugg => {
+        const sourceCard = cards.find(c => c.id === aiSugg.sourceCardId);
+        const targetCard = cards.find(c => c.id === aiSugg.targetCardId);
+        
+        return {
+          sourceCardId: aiSugg.sourceCardId,
+          targetCardId: aiSugg.targetCardId,
+          confidence: Math.round(aiSugg.confidence * 100) / 100,
+          reason: aiSugg.reason,
+          sourceCard,
+          targetCard,
+        };
+      });
+      
+      console.log(`[AI] Found ${suggestions.length} AI-powered suggestions`);
+    } catch (error) {
+      console.error('[AI] AI analysis failed, falling back to keyword matching:', error);
+      // Fall through to keyword matching
+      suggestions = [];
+    }
+  }
+  
+  // Use keyword matching if AI failed or not available
+  if (suggestions.length === 0) {
+    console.log('[Keyword] Using keyword matching for suggestions');
+    suggestions = await suggestConnectionsKeywordBased(cards, existingPairs, minConfidence);
+  }
+  
+  // Sort by confidence (highest first)
+  suggestions.sort((a, b) => b.confidence - a.confidence);
+  
+  return suggestions;
+}
+
+/**
+ * Keyword-based connection suggestion (original Story 6.2 algorithm)
+ * Extracted as separate function for clarity
+ */
+async function suggestConnectionsKeywordBased(
+  cards: Notes[],
+  existingPairs: Set<string>,
+  minConfidence: number
+): Promise<ConnectionSuggestion[]> {
   const suggestions: ConnectionSuggestion[] = [];
   
   // Compare each pair of cards
@@ -153,9 +219,6 @@ export async function suggestConnections(
       }
     }
   }
-  
-  // Sort by confidence (highest first)
-  suggestions.sort((a, b) => b.confidence - a.confidence);
   
   return suggestions;
 }
