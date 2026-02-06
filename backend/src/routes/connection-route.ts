@@ -127,13 +127,22 @@ connectionRouter.delete("/connections/:id", async (req, res) => {
   }
 });
 
-// Story 6.2: Suggest connections for a board (auto-connection)
+// Story 6.2/6.5: Suggest connections for a board (auto-connection with optional AI)
 connectionRouter.get("/boards/:boardId/connections/suggest", async (req, res) => {
   try {
     const { boardId } = req.params;
     const minConfidence = parseFloat(req.query.minConfidence as string) || 0.2;
     
-    const suggestions = await suggestConnections(boardId, minConfidence);
+    // Story 6.5: Support useAI query parameter
+    let useAI: boolean | undefined;
+    if (req.query.useAI === 'true') {
+      useAI = true;
+    } else if (req.query.useAI === 'false') {
+      useAI = false;
+    }
+    // If not specified, let suggestConnections auto-detect
+    
+    const suggestions = await suggestConnections(boardId, minConfidence, useAI);
     
     res.json({ 
       data: suggestions,
