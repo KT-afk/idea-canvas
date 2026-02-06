@@ -14,6 +14,8 @@ import { NoteCardSkeleton } from "./components/NoteCardSkeleton";
 import { NewBoardDialog } from "./components/NewBoardDialog"; // Story 3.1
 import { Toolbar } from "./components/Toolbar"; // Professional toolbar
 import { CommandPalette } from "./components/CommandPalette"; // Story 5.1
+import { ConnectionSuggestionsPanel } from "./components/connections/ConnectionSuggestionsPanel"; // Story 6.3
+import { ConnectionLines } from "./components/connections/ConnectionLines"; // Story 6.4
 import { useNoteMutations } from "./hooks/useNoteMutations";
 import { useBoardMutations } from "./hooks/useBoardMutations"; // Story 3.1
 import { usePreferences } from "./hooks/usePreferences"; // Story 3.4
@@ -50,7 +52,7 @@ function App() {
   });
 
   // Story 3.4: Fetch user preferences
-  const { preferences, isLoading: isLoadingPrefs } = usePreferences();
+  const { preferences } = usePreferences();
 
   const {
     data: notes = [],
@@ -65,8 +67,8 @@ function App() {
 
   // Story 3.4: Set default board when boards and preferences are loaded
   useEffect(() => {
-    if (boards.length > 0 && !currentBoardId && !isLoadingPrefs) {
-      // Try to use preferred default board
+    if (boards.length > 0 && !currentBoardId) {
+      // Try to use preferred default board (if available)
       if (preferences?.defaultBoardId) {
         const defaultBoardExists = boards.some(b => b.id === preferences.defaultBoardId);
         if (defaultBoardExists) {
@@ -75,10 +77,10 @@ function App() {
         }
       }
       
-      // Fallback to first board
+      // Fallback to first board (don't wait for preferences to load)
       setCurrentBoardId(boards[0].id);
     }
-  }, [boards, currentBoardId, preferences, isLoadingPrefs]);
+  }, [boards, currentBoardId, preferences]);
 
   // Story 3.3: Auto-switch to fallback board if current board is deleted
   useEffect(() => {
@@ -105,6 +107,9 @@ function App() {
 
   // Story 5.1: Command palette state
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Story 6.3: Connection suggestions panel state
+  const [isConnectionsPanelOpen, setIsConnectionsPanelOpen] = useState(false);
 
   // Issue #4: Calculate archived count for badge
   const archivedCount = useMemo(() => {
@@ -291,6 +296,7 @@ function App() {
           currentBoardId={currentBoardId}
           onBoardChange={setCurrentBoardId}
           onSearch={() => setIsCommandPaletteOpen(true)}
+          onFindConnections={() => setIsConnectionsPanelOpen(true)}
         />
         <div className="flex-1">
           <EmptyState onAdd={() => handleAddNote('note')} />
@@ -306,6 +312,7 @@ function App() {
           currentBoardId={currentBoardId}
           onBoardChange={setCurrentBoardId}
           onSearch={() => setIsCommandPaletteOpen(true)}
+          onFindConnections={() => setIsConnectionsPanelOpen(true)}
         />
         
         <BoardCanvas
@@ -317,6 +324,12 @@ function App() {
           notes={notes} // Story 1.9: Pass notes for "Fit to Content" calculation
         >
           <div ref={boardRef} className="relative w-full h-full">
+            {/* Story 6.4: Connection Lines (SVG overlay behind cards) */}
+            <ConnectionLines
+              boardId={currentBoardId}
+              zoom={zoom}
+            />
+            
             <AnimatePresence>
               {/* Story 1.3 AC#8: Show skeleton while note is being created */}
               {pendingNotePosition && (
@@ -330,7 +343,6 @@ function App() {
                 // Story 1.6: Conditionally render card type based on note.type
                 const cardProps = {
                   id: note.id,
-                  key: note.id,
                   positionX: note.positionX ?? 0,
                   positionY: note.positionY ?? 0,
                   backgroundColor: note.backgroundColor ?? "yellow",
@@ -358,11 +370,11 @@ function App() {
 
                 // Render the appropriate card component based on type
                 if (note.type === 'idea') {
-                  return <IdeaCard {...cardProps} />;
+                  return <IdeaCard key={note.id} {...cardProps} />;
                 } else if (note.type === 'plan') {
-                  return <PlanCard {...cardProps} />;
+                  return <PlanCard key={note.id} {...cardProps} />;
                 } else {
-                  return <NoteCard {...cardProps} />;
+                  return <NoteCard key={note.id} {...cardProps} />;
                 }
               })}
             </AnimatePresence>
@@ -402,6 +414,14 @@ function App() {
           notes={notes}
           boards={boards}
           onSelectNote={handleSelectNote}
+        />
+
+        {/* Story 6.3: Connection Suggestions Panel */}
+        <ConnectionSuggestionsPanel
+          isOpen={isConnectionsPanelOpen}
+          onClose={() => setIsConnectionsPanelOpen(false)}
+          boardId={currentBoardId}
+          onConnectionCreated={() => refetch()}
         />
       </>
     );

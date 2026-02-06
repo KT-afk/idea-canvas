@@ -29,6 +29,9 @@ export function useNoteMutations() {
           ...oldNotes,
           data,
         ]);
+        
+        // Also invalidate to ensure fresh data
+        queryClient.invalidateQueries({ queryKey });
       }
     },
   });
