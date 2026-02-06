@@ -6,6 +6,8 @@
  */
 
 import Notes from "../models/NOTES";
+import Connections from "../models/CONNECTIONS";
+import { Op } from "sequelize";
 
 interface ConnectionSuggestion {
   sourceCardId: string;
@@ -65,6 +67,7 @@ function findCommonKeywords(wordsA: string[], wordsB: string[]): string[] {
 /**
  * Analyze cards on a board and suggest connections
  * Uses simple keyword matching with Jaccard similarity
+ * Filters out existing connections
  */
 export async function suggestConnections(
   boardId: string,
@@ -83,6 +86,22 @@ export async function suggestConnections(
     return []; // Need at least 2 cards to create connections
   }
   
+  // Get all existing connections on this board
+  const existingConnections = await Connections.findAll({
+    where: { boardId },
+    attributes: ['SOURCECARDID', 'TARGETCARDID'],
+  });
+  
+  // Create a Set of existing connection pairs for fast lookup
+  const existingPairs = new Set<string>();
+  existingConnections.forEach(conn => {
+    const sourceId = conn.get('SOURCECARDID') as string;
+    const targetId = conn.get('TARGETCARDID') as string;
+    // Store both directions since connections are bidirectional
+    existingPairs.add(`${sourceId}-${targetId}`);
+    existingPairs.add(`${targetId}-${sourceId}`);
+  });
+  
   const suggestions: ConnectionSuggestion[] = [];
   
   // Compare each pair of cards
@@ -90,6 +109,12 @@ export async function suggestConnections(
     for (let j = i + 1; j < cards.length; j++) {
       const cardA = cards[i];
       const cardB = cards[j];
+      
+      // Skip if connection already exists
+      const pairKey = `${cardA.id}-${cardB.id}`;
+      if (existingPairs.has(pairKey)) {
+        continue;
+      }
       
       // Extract keywords
       const wordsA = extractKeywords(cardA.content);
