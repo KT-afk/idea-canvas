@@ -32,6 +32,7 @@ export interface CardProps {
   type?: 'note' | 'idea' | 'plan'; // Story 1.3: Card type
   status?: 'active' | 'archived' | 'graduated'; // Story 2.3: Card status
   isNew?: boolean; // Story 1.3: Flag for newly created notes to trigger auto-focus
+  shouldHighlight?: boolean; // Story 5.4: Trigger 3s highlight glow when selected from search
   customClassName?: string; // Story 1.6: Type-specific styling classes
   onColorChange: (backgroundColor: string) => void;
   onTextColorChange: (textColor: string) => void;
@@ -58,6 +59,7 @@ export function Card({
   type = 'note',
   status = 'active',
   isNew = false,
+  shouldHighlight = false,
   customClassName = '',
   onColorChange,
   onTextColorChange,
@@ -78,12 +80,22 @@ export function Card({
   const [ariaAnnouncement, setAriaAnnouncement] = useState(''); // Story 1.4: Screen reader announcements
   const [hasUserInteracted, setHasUserInteracted] = useState(false); // Story 1.3: Track if user has typed
   const [justFinishedDrag, setJustFinishedDrag] = useState(false); // Prevent flicker after drag
+  const [isHighlighted, setIsHighlighted] = useState(false); // Story 5.4: 3s highlight glow from search
   const noteRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null); // Story 1.3: Ref for auto-focus
   const lastSavedPos = useRef({ positionX, positionY });
   const dragStateRef = useRef<{ startX: number; startY: number; cardX: number; cardY: number } | null>(null);
   const zoomRef = useRef(zoom);
   const isDraggingRef = useRef(false);
+  
+  // Story 5.4: Trigger 3s highlight when shouldHighlight changes
+  useEffect(() => {
+    if (shouldHighlight) {
+      setIsHighlighted(true);
+      const timer = setTimeout(() => setIsHighlighted(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldHighlight]);
   
   // Keep zoom ref updated
   useEffect(() => {
@@ -361,7 +373,7 @@ export function Card({
         touchAction: 'none', // Prevent default touch behaviors
         transition: isDragging ? 'none' : undefined, // Disable transitions during drag for instant response
       }}
-      className={`relative p-4 rounded-lg w-52 shadow-lg hover:shadow-2xl transition-shadow duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${isKeyboardMoving ? 'ring-2 ring-primary/50' : ''} ${customClassName}`}
+      className={`relative p-4 rounded-lg w-52 shadow-lg hover:shadow-2xl transition-shadow duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${isKeyboardMoving ? 'ring-2 ring-primary/50' : ''} ${isHighlighted ? 'ring-4 ring-primary/70 ring-offset-2' : ''} ${customClassName}`}
     >
       {/* Story 1.4: ARIA live region for screen reader announcements */}
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">

@@ -180,6 +180,9 @@ function App() {
     }
   }, [newNoteId]);
 
+  // Story 5.4: Track highlighted note from search (for 3s glow effect)
+  const [highlightedNoteId, setHighlightedNoteId] = useState<string | null>(null);
+
   // Story 5.1: Handle selecting a note from command palette
   const handleSelectNote = useCallback((noteId: string) => {
     const note = notes.find((n: Note) => n.id === noteId);
@@ -190,6 +193,10 @@ function App() {
 
     // Bring the note to front for visual emphasis
     bringToFront(noteId);
+
+    // Story 5.4: Trigger 3s highlight glow
+    setHighlightedNoteId(noteId);
+    setTimeout(() => setHighlightedNoteId(null), 3100); // Clear after 3.1s (slightly longer than animation)
   }, [notes, bringToFront]);
 
   // Story 3.1: Handle creating a new board and switch to it
@@ -332,6 +339,7 @@ function App() {
                   type: note.type ?? "note",
                   status: note.status ?? "active", // Story 2.3
                   isNew: note.id === newNoteId,
+                  shouldHighlight: note.id === highlightedNoteId, // Story 5.4: Trigger 3s glow
                   zoom: zoom, // Pass zoom for coordinate conversion during drag
                   onEdit: (id: string, newContent: string) =>
                     editNote.mutateAsync({ id, payload: { content: newContent }, boardId: currentBoardId ?? undefined }),
