@@ -25,3 +25,16 @@ export type Board = {
   createdAt?: string;
   updatedAt?: string;
 };
+
+// Story 6.1: Connection type
+export type Connection = {
+  id: string;
+  sourceCardId: string;
+  targetCardId: string;
+  boardId: string;
+  label?: string | null;
+  sourceCard?: Note;
+  targetCard?: Note;
+  createdAt?: string;
+  updatedAt?: string;
+};
