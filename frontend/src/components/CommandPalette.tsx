@@ -45,21 +45,30 @@ export function CommandPalette({
   }, [notes]);
 
   // Filter notes based on search query, mode, and filters
+  // Story 5.5: Enhanced to include match metadata (count, score)
   const filteredNotes = useMemo(() => {
-    let results = notes;
+    let results: Array<Note & { matchCount?: number; fuzzyScore?: number }> = notes;
 
     // Apply search (plain or smart)
     if (search) {
       if (searchMode === "plain") {
-        // Plain keyword search
+        // Plain keyword search with match counting
         const searchLower = search.toLowerCase();
-        results = results.filter((note) =>
-          note.content.toLowerCase().includes(searchLower)
-        );
+        results = results
+          .filter((note) => note.content.toLowerCase().includes(searchLower))
+          .map((note) => {
+            // Count how many times the search term appears
+            const matches = note.content.toLowerCase().split(searchLower).length - 1;
+            return { ...note, matchCount: matches };
+          });
       } else {
-        // Smart fuzzy search
+        // Smart fuzzy search with score
         const fuseResults = fuse.search(search);
-        results = fuseResults.map((result) => result.item);
+        results = fuseResults.map((result) => ({
+          ...result.item,
+          fuzzyScore: result.score,
+          matchCount: 1, // Fuse doesn't provide match count easily
+        }));
       }
     }
 
@@ -297,14 +306,34 @@ export function CommandPalette({
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground line-clamp-2 mb-1">
-                      {highlightMatches(note.content, search)}
+                      {searchMode === "plain" && search
+                        ? getContextSnippet(note.content, search)
+                        : highlightMatches(note.content, search)}
                     </p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span className="capitalize">{note.type}</span>
                       {note.boardId && (
                         <>
                           <span>•</span>
-                          <span>Board</span>
+                          <span>{boards.find(b => b.id === note.boardId)?.name || "Board"}</span>
+                        </>
+                      )}
+                      {/* Story 5.5: Show match count for plain search */}
+                      {searchMode === "plain" && search && note.matchCount && note.matchCount > 1 && (
+                        <>
+                          <span>•</span>
+                          <span className="text-primary font-medium">
+                            {note.matchCount} matches
+                          </span>
+                        </>
+                      )}
+                      {/* Story 5.5: Show fuzzy score for smart search */}
+                      {searchMode === "smart" && search && note.fuzzyScore !== undefined && (
+                        <>
+                          <span>•</span>
+                          <span className="text-primary font-medium">
+                            {Math.round((1 - note.fuzzyScore) * 100)}% match
+                          </span>
                         </>
                       )}
                     </div>
@@ -381,6 +410,55 @@ function highlightMatches(text: string, search: string): React.ReactNode {
           <span key={i}>{part}</span>
         )
       )}
+    </>
+  );
+}
+
+// Story 5.5: Extract context snippet around first match
+function getContextSnippet(text: string, search: string): React.ReactNode {
+  if (!search) return text;
+
+  const searchLower = search.toLowerCase();
+  const textLower = text.toLowerCase();
+  const matchIndex = textLower.indexOf(searchLower);
+
+  // If no match or text is short, return full text with highlighting
+  if (matchIndex === -1 || text.length <= 150) {
+    return highlightMatches(text, search);
+  }
+
+  // Extract snippet around the match (75 chars before, 75 after)
+  const contextRadius = 75;
+  const start = Math.max(0, matchIndex - contextRadius);
+  const end = Math.min(text.length, matchIndex + search.length + contextRadius);
+
+  // Find word boundaries to avoid cutting words
+  let snippetStart = start;
+  let snippetEnd = end;
+
+  // Move start to beginning of word (unless at text start)
+  if (start > 0) {
+    while (snippetStart > 0 && text[snippetStart - 1] !== ' ') {
+      snippetStart--;
+    }
+  }
+
+  // Move end to end of word (unless at text end)
+  if (end < text.length) {
+    while (snippetEnd < text.length && text[snippetEnd] !== ' ') {
+      snippetEnd++;
+    }
+  }
+
+  const snippet = text.slice(snippetStart, snippetEnd);
+  const prefix = snippetStart > 0 ? "..." : "";
+  const suffix = snippetEnd < text.length ? "..." : "";
+
+  return (
+    <>
+      {prefix}
+      {highlightMatches(snippet, search)}
+      {suffix}
     </>
   );
 }
