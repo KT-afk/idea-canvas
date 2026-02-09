@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { AutosaveIndicator } from "./components/AutosaveIndicator"; // Story 1.8
 import { BoardCanvas, type BoardCanvasHandle } from "./components/BoardCanvas";
 import { CanvasControls } from "./components/CanvasControls";
@@ -65,6 +66,11 @@ function App() {
     enabled: !!currentBoardId,
   });
 
+  // Initialize mutations before using them in effects
+  const { addNote, editNote, updatePosition, updateColor, updateTextColor, updateType, deleteNote, archiveNote, restoreNote } = useNoteMutations();
+  const { createBoard } = useBoardMutations(); // Story 3.1
+  const { order, bringToFront } = useZIndexManager(notes);
+
   // Story 3.4: Set default board when boards and preferences are loaded
   // Auto-create default board if none exist
   useEffect(() => {
@@ -106,10 +112,6 @@ function App() {
     }
   }, [boards, currentBoardId]);
 
-  const { addNote, editNote, updatePosition, updateColor, updateTextColor, updateType, deleteNote, archiveNote, restoreNote } = useNoteMutations();
-  const { createBoard } = useBoardMutations(); // Story 3.1
-  const { order, bringToFront } = useZIndexManager(notes);
-
   // Story 2.3: Toggle to show/hide archived items
   const [showArchived, setShowArchived] = useState(false);
 
@@ -129,6 +131,13 @@ function App() {
 
   // Story 1.3 & 1.5: Handle adding note with type selection and optional position (for double-click)
   const handleAddNote = useCallback((type: 'note' | 'idea' | 'plan', clickPositionX?: number, clickPositionY?: number) => {
+    // BUG FIX: Ensure we have a valid board before creating a note
+    if (!currentBoardId) {
+      console.error('Cannot create note: No board selected');
+      toast.error('Please wait for the board to be created');
+      return;
+    }
+
     const offset = (notes.length % 5) * 25;
     // Use clicked position or default to canvas center (0, 0) with offset
     const positionX = clickPositionX !== undefined ? clickPositionX : offset;
@@ -140,7 +149,7 @@ function App() {
     // Create note with single space (backend requires non-empty content)
     // The space will be selected on focus so user can immediately type over it
     addNote.mutate(
-      { content: " ", positionX, positionY, type, status: "active", boardId: currentBoardId ?? undefined },
+      { content: " ", positionX, positionY, type, status: "active", boardId: currentBoardId },
       {
         onSuccess: (data) => {
           // Clear skeleton and set newNoteId to trigger auto-focus
@@ -297,8 +306,14 @@ function App() {
   }
 
   // Issue #1 fix: Show empty state only if no active notes AND no pending creation
+  // BUG FIX: Don't show empty state if we don't have a valid board yet (board creation pending)
   const hasActiveNotes = notes.some((note: Note) => (note.status ?? 'active') !== 'archived');
   if (!hasActiveNotes && !pendingNotePosition) {
+    // If currentBoardId is null, we're still creating the default board - show loading
+    if (!currentBoardId) {
+      return <LoadingState message="Setting up your workspace..." />;
+    }
+    
     return (
       <div className="h-screen w-screen bg-background flex flex-col">
         {/* Toolbar even in empty state */}
