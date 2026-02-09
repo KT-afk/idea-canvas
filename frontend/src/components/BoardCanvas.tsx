@@ -271,63 +271,77 @@ export const BoardCanvas = forwardRef<BoardCanvasHandle, BoardCanvasProps>(
 
       // Issue #1 & #2 fix: Space key handling moved to global window listener below
 
+      // Check if user is typing in an input/textarea/contenteditable
+      const activeElement = document.activeElement;
+      const isTyping = activeElement?.tagName === 'INPUT' ||
+                      activeElement?.tagName === 'TEXTAREA' ||
+                      activeElement?.getAttribute('contenteditable') === 'true';
+
       switch (e.key) {
         case 'ArrowUp':
-          e.preventDefault();
-          // Issue #9 fix: Update motion value and notify parent for virtualization
-          {
-            const newY = Math.min(PAN_LIMIT, y.get() + moveStep);
-            y.set(newY);
-            onPanChange({ x: x.get(), y: newY });
+          if (!isTyping) {
+            e.preventDefault();
+            // Issue #9 fix: Update motion value and notify parent for virtualization
+            {
+              const newY = Math.min(PAN_LIMIT, y.get() + moveStep);
+              y.set(newY);
+              onPanChange({ x: x.get(), y: newY });
+            }
           }
           break;
         case 'ArrowDown':
-          e.preventDefault();
-          {
-            const newY = Math.max(-PAN_LIMIT, y.get() - moveStep);
-            y.set(newY);
-            onPanChange({ x: x.get(), y: newY });
+          if (!isTyping) {
+            e.preventDefault();
+            {
+              const newY = Math.max(-PAN_LIMIT, y.get() - moveStep);
+              y.set(newY);
+              onPanChange({ x: x.get(), y: newY });
+            }
           }
           break;
         case 'ArrowLeft':
-          e.preventDefault();
-          {
-            const newX = Math.min(PAN_LIMIT, x.get() + moveStep);
-            x.set(newX);
-            onPanChange({ x: newX, y: y.get() });
+          if (!isTyping) {
+            e.preventDefault();
+            {
+              const newX = Math.min(PAN_LIMIT, x.get() + moveStep);
+              x.set(newX);
+              onPanChange({ x: newX, y: y.get() });
+            }
           }
           break;
         case 'ArrowRight':
-          e.preventDefault();
-          {
-            const newX = Math.max(-PAN_LIMIT, x.get() - moveStep);
-            x.set(newX);
-            onPanChange({ x: newX, y: y.get() });
+          if (!isTyping) {
+            e.preventDefault();
+            {
+              const newX = Math.max(-PAN_LIMIT, x.get() - moveStep);
+              x.set(newX);
+              onPanChange({ x: newX, y: y.get() });
+            }
           }
           break;
         case '+':
         case '=':
-          e.preventDefault();
-          onZoomChange(Math.min(ZOOM_MAX, zoom + 0.1));
+          // Only zoom if Cmd/Ctrl is pressed (Cmd+= or Cmd++)
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault();
+            onZoomChange(Math.min(ZOOM_MAX, zoom + 0.1));
+          }
           break;
         case '-':
         case '_':
-          e.preventDefault();
-          onZoomChange(Math.max(ZOOM_MIN, zoom - 0.1));
+          // Only zoom if Cmd/Ctrl is pressed (Cmd+- or Cmd+_)
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault();
+            onZoomChange(Math.max(ZOOM_MIN, zoom - 0.1));
+          }
           break;
         case 'h':
         case 'H':
-        { 
-          const activeElement = document.activeElement;
-          const isTyping = activeElement?.tagName === 'INPUT' ||
-                          activeElement?.tagName === 'TEXTAREA' ||
-                          activeElement?.getAttribute('contenteditable') === 'true';
           if (!isTyping) {
             e.preventDefault();
             resetToHome();
           }
-          break; 
-        }
+          break;
         case 'Escape':
           // Remove focus from canvas
           if (canvasRef.current) {
