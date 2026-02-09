@@ -66,7 +66,18 @@ function App() {
   });
 
   // Story 3.4: Set default board when boards and preferences are loaded
+  // Auto-create default board if none exist
   useEffect(() => {
+    if (boards.length === 0 && !createBoard.isPending) {
+      // Create a default "My Board" on first load
+      createBoard.mutate("My Board", {
+        onSuccess: (newBoard) => {
+          setCurrentBoardId(newBoard.id);
+        },
+      });
+      return;
+    }
+
     if (boards.length > 0 && !currentBoardId) {
       // Try to use preferred default board (if available)
       if (preferences?.defaultBoardId) {
@@ -80,7 +91,7 @@ function App() {
       // Fallback to first board (don't wait for preferences to load)
       setCurrentBoardId(boards[0].id);
     }
-  }, [boards, currentBoardId, preferences]);
+  }, [boards, currentBoardId, preferences, createBoard]);
 
   // Story 3.3: Auto-switch to fallback board if current board is deleted
   useEffect(() => {
