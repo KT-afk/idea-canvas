@@ -9,6 +9,9 @@ import { apiLimiter } from "./middleware/rateLimiter";
 
 const app = express();
 
+// Trust proxy for Railway (required for rate limiting and X-Forwarded-For header)
+app.set('trust proxy', 1);
+
 // Configure CORS for production
 const allowedOrigins = [
   "http://localhost:5173",
