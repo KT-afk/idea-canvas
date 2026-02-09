@@ -12,6 +12,29 @@ import {
 
 export const router = express.Router();
 
+//Get all notes (optionally filtered by boardId query param)
+router.get("/notes", async (req, res) => {
+  try {
+    const { boardId } = req.query;
+    
+    if (boardId && typeof boardId === 'string') {
+      // Update last opened timestamp for the board
+      updateLastOpenedAt(boardId).catch(err => {
+        console.error("❌ Error updating last opened at for board:", err);
+      });
+      const notes = await getAllNotesByBoardId(boardId);
+      return res.status(200).json({ data: notes });
+    }
+    
+    // If no boardId provided, return empty array (or could return all notes)
+    // For now, returning empty array as each note should belong to a board
+    return res.status(200).json({ data: [] });
+  } catch (error) {
+    console.error("❌ Error fetching notes:", error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch notes' } });
+  }
+});
+
 //Create a note
 router.post("/notes", async (req, res) => {
   const transaction = await sequelize.transaction();
