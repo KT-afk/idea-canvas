@@ -1,5 +1,9 @@
 import { Sequelize, SequelizeOptions } from "sequelize-typescript";
 import { ENV } from "./env";
+import BOARDS from "../models/BOARDS";
+import CONNECTIONS from "../models/CONNECTIONS";
+import NOTES from "../models/NOTES";
+import USER_PREFERENCES from "../models/USER_PREFERENCES";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -8,7 +12,7 @@ const sequelizeConfig: SequelizeOptions = ENV.DATABASE_URL
   ? {
       dialect: "postgres",
       logging: false,
-      models: [__dirname + "/../models"],
+      models: [BOARDS, CONNECTIONS, NOTES, USER_PREFERENCES],
       dialectOptions: isProduction
         ? {
             ssl: {
@@ -26,7 +30,7 @@ const sequelizeConfig: SequelizeOptions = ENV.DATABASE_URL
       database: ENV.DB_NAME,
       dialect: "postgres",
       logging: false,
-      models: [__dirname + "/../models"],
+      models: [BOARDS, CONNECTIONS, NOTES, USER_PREFERENCES],
     };
 
 export const sequelize = ENV.DATABASE_URL

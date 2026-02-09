@@ -17,25 +17,32 @@ describe('Notes Routes', () => {
   });
 
   describe('GET /api/notes', () => {
-    it('should return 200 with { data: notes[] }', async () => {
-      const mockNotes = [
-        { id: '1', content: 'Note 1', positionX: 0, positionY: 0 },
-        { id: '2', content: 'Note 2', positionX: 100, positionY: 100 },
-      ];
-
-      vi.mocked(notesService.getAllNotes).mockResolvedValue(mockNotes as any);
-
+    it('should return 200 with empty array when no boardId is provided', async () => {
       const response = await request(app).get('/api/notes');
 
       expect(response.status).toBe(200);
+      expect(response.body).toEqual({ data: [] });
+    });
+
+    it('should return 200 with { data: notes[] } when boardId is provided', async () => {
+      const mockNotes = [
+        { id: '1', content: 'Note 1', positionX: 0, positionY: 0, boardId: 'board-123' },
+        { id: '2', content: 'Note 2', positionX: 100, positionY: 100, boardId: 'board-123' },
+      ];
+
+      vi.mocked(notesService.getAllNotesByBoardId).mockResolvedValue(mockNotes as any);
+
+      const response = await request(app).get('/api/notes?boardId=board-123');
+
+      expect(response.status).toBe(200);
       expect(response.body).toEqual({ data: mockNotes });
-      expect(notesService.getAllNotes).toHaveBeenCalledOnce();
+      expect(notesService.getAllNotesByBoardId).toHaveBeenCalledWith('board-123');
     });
 
     it('should return 500 with error object on failure', async () => {
-      vi.mocked(notesService.getAllNotes).mockRejectedValue(new Error('Database error'));
+      vi.mocked(notesService.getAllNotesByBoardId).mockRejectedValue(new Error('Database error'));
 
-      const response = await request(app).get('/api/notes');
+      const response = await request(app).get('/api/notes?boardId=board-123');
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({
