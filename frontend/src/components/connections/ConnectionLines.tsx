@@ -12,9 +12,10 @@ import { ConnectionLine } from './ConnectionLine';
 interface ConnectionLinesProps {
   boardId: string | null;
   zoom?: number; // Still needed for line thickness scaling
+  onNavigateTo?: (positionX: number, positionY: number) => void; // Story 6.6: Navigate to connected card
 }
 
-export function ConnectionLines({ boardId, zoom = 1 }: ConnectionLinesProps) {
+export function ConnectionLines({ boardId, zoom = 1, onNavigateTo }: ConnectionLinesProps) {
   const { connections, deleteConnection } = useConnections(boardId);
 
   if (!boardId || connections.length === 0) {
@@ -42,6 +43,7 @@ export function ConnectionLines({ boardId, zoom = 1 }: ConnectionLinesProps) {
               key={connection.id}
               connection={connection}
               onDelete={deleteConnection}
+              onNavigateTo={onNavigateTo}
               zoom={zoom}
             />
           ))}

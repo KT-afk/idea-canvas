@@ -14,6 +14,11 @@ export type Note = {
   zIndex?: number;
   createdAt?: string;
   updatedAt?: string;
+  // Epic 7: resurfacing tracking
+  lastViewedAt?: string | null;
+  lastResurfacedAt?: string | null;
+  resurfaceCount?: number;
+  actedOnResurface?: boolean;
 };
 
 // Story 3.1: Board type
@@ -50,4 +55,33 @@ export type ConnectionSuggestion = {
   reason: string;
   sourceCard?: Note;
   targetCard?: Note;
+};
+
+// Epic 8, Story 8.1: Next Time Note
+export type NextTimeNote = {
+  id: string;
+  parentNoteId: string;
+  content: string;
+  completedAt?: string | null;
+  createdAt?: string;
+};
+
+// Epic 8, Story 8.3: Activity Log Entry
+export type ActivityEventType =
+  | 'created'
+  | 'edited'
+  | 'type_changed'
+  | 'status_changed'
+  | 'connected'
+  | 'resurfaced'
+  | 'next_time_added'
+  | 'next_time_completed'
+  | 'graduated';
+
+export type ActivityLogEntry = {
+  id: string;
+  noteId: string;
+  eventType: ActivityEventType;
+  payload?: Record<string, unknown> | null;
+  createdAt: string;
 };

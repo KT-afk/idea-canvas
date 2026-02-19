@@ -5,6 +5,9 @@ import { router } from "./routes/notes-route";
 import { boardsRouter } from "./routes/boards-route";
 import { preferencesRouter } from "./routes/preferences-route";
 import { connectionRouter } from "./routes/connection-route";
+import { nextTimeNotesRouter } from "./routes/next-time-notes-route";
+import { activityLogRouter } from "./routes/activity-log-route";
+import { resurfacingRouter } from "./routes/resurfacing-route";
 import { apiLimiter } from "./middleware/rateLimiter";
 
 const app = express();
@@ -51,6 +54,9 @@ app.use("/api", router);
 app.use("/api", boardsRouter);
 app.use("/api", preferencesRouter);
 app.use("/api", connectionRouter);
+app.use("/api", nextTimeNotesRouter);
+app.use("/api", activityLogRouter);
+app.use("/api", resurfacingRouter);
 const port = process.env.PORT || 3000;
 
 

@@ -19,6 +19,7 @@ interface ConnectionSuggestionsPanelProps {
   onClose: () => void;
   boardId: string | null;
   onConnectionCreated?: () => void; // Callback when connection is accepted
+  onNavigateTo?: (positionX: number, positionY: number) => void; // Story 6.6: Navigate to card
 }
 
 export function ConnectionSuggestionsPanel({
@@ -26,6 +27,7 @@ export function ConnectionSuggestionsPanel({
   onClose,
   boardId,
   onConnectionCreated,
+  onNavigateTo,
 }: ConnectionSuggestionsPanelProps) {
   const {
     suggestions,
@@ -191,6 +193,7 @@ export function ConnectionSuggestionsPanel({
                         onAccept={() => handleAccept(suggestion)}
                         onReject={() => handleReject(suggestion)}
                         isAccepting={isAccepting}
+                        onNavigateTo={onNavigateTo}
                       />
                     ))}
                   </AnimatePresence>

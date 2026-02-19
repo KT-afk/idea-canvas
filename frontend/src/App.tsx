@@ -21,6 +21,7 @@ import { useNoteMutations } from "./hooks/useNoteMutations";
 import { useBoardMutations } from "./hooks/useBoardMutations"; // Story 3.1
 import { usePreferences } from "./hooks/usePreferences"; // Story 3.4
 import { useZIndexManager } from "./hooks/useZIndexManager";
+import { useResurfacing } from "./hooks/useResurfacing"; // Epic 7
 import { fetchNotesByBoard } from "./services/notesService";
 import { fetchBoards } from "./services/boardsService"; // Story 3.1
 import type { Note } from "./types/types";
@@ -234,6 +235,23 @@ function App() {
     });
   }, [createBoard]);
 
+  // Story 6.6: Navigate to a card from connections panel or connection line
+  const handleNavigateTo = useCallback((positionX: number, positionY: number) => {
+    canvasRef.current?.panToCard(positionX, positionY);
+  }, []);
+
+  // Epic 7: Resurface a forgotten idea 2s after load
+  useResurfacing({
+    frequency: preferences?.resurfaceFrequency ?? 'normal',
+    enabled: !!currentBoardId,
+    onView: (idea) => handleNavigateTo(idea.positionX, idea.positionY),
+  });
+
+  // Epic 8: Graduate an idea to a plan
+  const handleGraduate = useCallback((id: string) => {
+    updateType.mutate({ id, type: 'plan', boardId: currentBoardId ?? undefined });
+  }, [updateType, currentBoardId]);
+
   // Zoom control handlers
   const handleZoomIn = () => {
     setZoom((prev) => Math.min(2, prev + 0.1));
@@ -354,6 +372,7 @@ function App() {
             <ConnectionLines
               boardId={currentBoardId}
               zoom={zoom}
+              onNavigateTo={handleNavigateTo}
             />
             
             <AnimatePresence>
@@ -392,6 +411,7 @@ function App() {
                   onDragEndSave: (id: string, positionX: number, positionY: number) =>
                     updatePosition.mutate({ id, positionX, positionY, boardId: currentBoardId ?? undefined }),
                   onNewNoteFocused: handleClearNewNote,
+                  onGraduate: handleGraduate,
                 };
 
                 // Render the appropriate card component based on type
@@ -448,6 +468,7 @@ function App() {
           onClose={() => setIsConnectionsPanelOpen(false)}
           boardId={currentBoardId}
           onConnectionCreated={() => refetch()}
+          onNavigateTo={handleNavigateTo}
         />
       </>
     );

@@ -1,8 +1,11 @@
 import { getColorClass } from "@/utilities/utils";
 import { motion, useMotionValue } from "framer-motion";
-import { Archive, ClipboardList, Lightbulb, PaintBucket, RotateCcw, StickyNote, Type, X } from "lucide-react";
+import { Archive, ClipboardList, GraduationCap, Lightbulb, PaintBucket, RotateCcw, StickyNote, Type, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { ColorPickerPopover } from "./Popover";
+import { NextTimeNotes } from "./NextTimeNotes";
+import { IdeaTimeline } from "./IdeaTimeline";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +47,7 @@ export interface CardProps {
   onBringToFront: (id: string) => void;
   onDragEndSave: (id: string, positionX: number, positionY: number) => void;
   onNewNoteFocused?: (id: string) => void; // Story 1.3: Callback when new note receives focus
+  onGraduate?: (id: string) => void; // Epic 8: Promote idea to plan
 }
 
 // Story 1.6: Base Card component - handles all shared logic
@@ -71,6 +75,7 @@ export function Card({
   onBringToFront,
   onDragEndSave,
   onNewNoteFocused,
+  onGraduate,
 }: Readonly<CardProps>) {
   // Story 1.3: Type indicator icon
   const TypeIcon = type === 'idea' ? Lightbulb : type === 'plan' ? ClipboardList : StickyNote;
@@ -271,6 +276,21 @@ export function Card({
     onTypeChange(newType);
   };
 
+  // Epic 8: Graduation celebration state
+  const [isGraduating, setIsGraduating] = useState(false);
+
+  const handleGraduate = () => {
+    if (isGraduating) return;
+    setIsGraduating(true);
+    // Trigger parent mutation (idea → plan)
+    onGraduate?.(id);
+    toast.success('Graduated to Plan!', {
+      description: 'Your idea has levelled up.',
+      duration: 4000,
+    });
+    setTimeout(() => setIsGraduating(false), 800);
+  };
+
   // Cleanup debounce timeout on unmount
   useEffect(() => {
     return () => {
@@ -373,7 +393,7 @@ export function Card({
         touchAction: 'none', // Prevent default touch behaviors
         transition: isDragging ? 'none' : undefined, // Disable transitions during drag for instant response
       }}
-      className={`relative p-4 rounded-lg w-52 shadow-lg hover:shadow-2xl transition-shadow duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${isKeyboardMoving ? 'ring-2 ring-primary/50' : ''} ${isHighlighted ? 'ring-4 ring-primary/70 ring-offset-2' : ''} ${customClassName}`}
+      className={`relative p-4 rounded-lg w-56 shadow-lg hover:shadow-2xl transition-shadow duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${isKeyboardMoving ? 'ring-2 ring-primary/50' : ''} ${isHighlighted ? 'ring-4 ring-primary/70 ring-offset-2' : ''} ${customClassName}`}
     >
       {/* Story 1.4: ARIA live region for screen reader announcements */}
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
@@ -450,36 +470,66 @@ export function Card({
         aria-label="Note content"
       />
 
-      {/* Story 2.3: Archive/Restore button - Issue #5: Hide for new/empty notes */}
-      {(status === 'archived' || (!isNew && editableText.trim() !== '')) && (
+      {/* Card footer: Archive/Restore + Type toggle — inline so dynamic sections below don't overlap */}
+      <div className="flex items-center justify-between mt-1">
+        {/* Story 2.3: Archive/Restore button - Issue #5: Hide for new/empty notes */}
+        {(status === 'archived' || (!isNew && editableText.trim() !== '')) ? (
+          <button
+            onClick={() => status === 'archived' ? onRestore(id) : onArchive(id)}
+            className="flex items-center gap-1 text-xs bg-black/5 hover:bg-black/10 px-2 py-1 rounded-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
+            aria-label={status === 'archived' ? 'Restore this item' : 'Archive this item'}
+          >
+            {status === 'archived' ? (
+              <>
+                <RotateCcw className="w-3 h-3" />
+                <span>Restore</span>
+              </>
+            ) : (
+              <>
+                <Archive className="w-3 h-3" />
+                <span>Archive</span>
+              </>
+            )}
+          </button>
+        ) : <span />}
+
+        {/* Story 1.5: Interactive type toggle button */}
         <button
-          onClick={() => status === 'archived' ? onRestore(id) : onArchive(id)}
-          className="absolute bottom-2 left-2 flex items-center gap-1 text-xs bg-black/5 hover:bg-black/10 px-2 py-1 rounded-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none transition-colors z-10 cursor-pointer"
-          aria-label={status === 'archived' ? 'Restore this item' : 'Archive this item'}
+          onClick={handleTypeToggle}
+          className="flex items-center gap-1 text-xs bg-black/5 hover:bg-black/10 px-2 py-1 rounded-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
+          aria-label={`Type: ${type}. Click to toggle to ${getNextType()}`}
         >
-          {status === 'archived' ? (
-            <>
-              <RotateCcw className="w-3 h-3" />
-              <span>Restore</span>
-            </>
-          ) : (
-            <>
-              <Archive className="w-3 h-3" />
-              <span>Archive</span>
-            </>
-          )}
+          <TypeIcon className="w-3 h-3" />
+          <span className="capitalize">{type}</span>
         </button>
+      </div>
+
+      {/* Epic 8: Next Time Notes — shown only on idea and plan cards */}
+      {(type === 'idea' || type === 'plan') && !isNew && editableText.trim() !== '' && (
+        <NextTimeNotes parentNoteId={id} textColor={textColor} />
       )}
 
-      {/* Story 1.5: Interactive type toggle button - placed after textarea for proper tab order */}
-      <button
-        onClick={handleTypeToggle}
-        className="absolute bottom-2 right-2 flex items-center gap-1 text-xs bg-black/5 hover:bg-black/10 px-2 py-1 rounded-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none transition-colors z-10 cursor-pointer"
-        aria-label={`Type: ${type}. Click to toggle to ${getNextType()}`}
-      >
-        <TypeIcon className="w-3 h-3" />
-        <span className="capitalize">{type}</span>
-      </button>
+      {/* Epic 8: Idea History Timeline — shown on idea and plan cards */}
+      {(type === 'idea' || type === 'plan') && !isNew && editableText.trim() !== '' && (
+        <IdeaTimeline noteId={id} />
+      )}
+
+      {/* Epic 8: Graduate to Plan button — shown only on idea cards */}
+      {type === 'idea' && status === 'active' && !isNew && editableText.trim() !== '' && (
+        <div className="mt-2 border-t border-black/10 pt-2" onPointerDown={(e) => e.stopPropagation()}>
+          <motion.button
+            onClick={handleGraduate}
+            disabled={isGraduating}
+            animate={isGraduating ? { scale: [1, 1.15, 0.95, 1] } : { scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1.5 rounded-md hover:from-blue-600 hover:to-purple-600 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none transition-all disabled:opacity-60 cursor-pointer"
+            aria-label="Graduate this idea to a plan"
+          >
+            <GraduationCap className="w-3.5 h-3.5" />
+            Graduate to Plan
+          </motion.button>
+        </div>
+      )}
     </motion.div>
   );
 }

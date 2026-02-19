@@ -6,7 +6,7 @@
  */
 
 import { motion } from 'framer-motion';
-import { Check, X, ArrowDown } from 'lucide-react';
+import { Check, X, ArrowDown, Navigation } from 'lucide-react';
 import type { ConnectionSuggestion } from '../../types/types';
 import { Button } from '../ui/button';
 
@@ -15,6 +15,7 @@ interface SuggestionCardProps {
   onAccept: () => void;
   onReject: () => void;
   isAccepting: boolean;
+  onNavigateTo?: (positionX: number, positionY: number) => void; // Story 6.6
 }
 
 export function SuggestionCard({
@@ -22,6 +23,7 @@ export function SuggestionCard({
   onAccept,
   onReject,
   isAccepting,
+  onNavigateTo,
 }: SuggestionCardProps) {
   const confidencePercent = Math.round(suggestion.confidence * 100);
   
@@ -60,9 +62,18 @@ export function SuggestionCard({
             {suggestion.sourceCard?.type === 'idea' ? '💡' : 
              suggestion.sourceCard?.type === 'plan' ? '📋' : '📝'}
           </span>
-          <p className="text-sm text-foreground line-clamp-2">
+          <p className="text-sm text-foreground line-clamp-2 flex-1">
             {suggestion.sourceCard?.content || '(empty)'}
           </p>
+          {onNavigateTo && suggestion.sourceCard && (
+            <button
+              onClick={() => onNavigateTo(Number(suggestion.sourceCard!.positionX), Number(suggestion.sourceCard!.positionY))}
+              className="shrink-0 text-primary hover:text-primary/70 transition-colors"
+              title="Jump to this card"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -80,9 +91,18 @@ export function SuggestionCard({
             {suggestion.targetCard?.type === 'idea' ? '💡' : 
              suggestion.targetCard?.type === 'plan' ? '📋' : '📝'}
           </span>
-          <p className="text-sm text-foreground line-clamp-2">
+          <p className="text-sm text-foreground line-clamp-2 flex-1">
             {suggestion.targetCard?.content || '(empty)'}
           </p>
+          {onNavigateTo && suggestion.targetCard && (
+            <button
+              onClick={() => onNavigateTo(Number(suggestion.targetCard!.positionX), Number(suggestion.targetCard!.positionY))}
+              className="shrink-0 text-primary hover:text-primary/70 transition-colors"
+              title="Jump to this card"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

@@ -4,15 +4,19 @@ import BOARDS from "../models/BOARDS";
 import CONNECTIONS from "../models/CONNECTIONS";
 import NOTES from "../models/NOTES";
 import USER_PREFERENCES from "../models/USER_PREFERENCES";
+import NEXT_TIME_NOTES from "../models/NEXT_TIME_NOTES";
+import ACTIVITY_LOG from "../models/ACTIVITY_LOG";
 
 const isProduction = process.env.NODE_ENV === "production";
+
+const ALL_MODELS = [BOARDS, CONNECTIONS, NOTES, USER_PREFERENCES, NEXT_TIME_NOTES, ACTIVITY_LOG];
 
 // Railway provides DATABASE_URL, use it if available
 const sequelizeConfig: SequelizeOptions = ENV.DATABASE_URL
   ? {
       dialect: "postgres",
       logging: false,
-      models: [BOARDS, CONNECTIONS, NOTES, USER_PREFERENCES],
+      models: ALL_MODELS,
       dialectOptions: isProduction
         ? {
             ssl: {
@@ -30,7 +34,7 @@ const sequelizeConfig: SequelizeOptions = ENV.DATABASE_URL
       database: ENV.DB_NAME,
       dialect: "postgres",
       logging: false,
-      models: [BOARDS, CONNECTIONS, NOTES, USER_PREFERENCES],
+      models: ALL_MODELS,
     };
 
 export const sequelize = ENV.DATABASE_URL

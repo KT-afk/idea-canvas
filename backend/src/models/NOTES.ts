@@ -117,4 +117,35 @@ export default class Notes extends Model<InferAttributes<Notes>, InferCreationAt
         field: "METADATA",
     })
     declare metadata: CreationOptional<Record<string, any> | null>;
+
+    // Epic 7: Resurfacing tracking fields
+    @Column({
+        type: DataType.DATE,
+        allowNull: true,
+        field: "LASTVIEWEDAT",
+    })
+    declare lastViewedAt: CreationOptional<Date | null>;
+
+    @Column({
+        type: DataType.DATE,
+        allowNull: true,
+        field: "LASTRESURFACEDAT",
+    })
+    declare lastResurfacedAt: CreationOptional<Date | null>;
+
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+        field: "RESURFACECOUNT",
+    })
+    declare resurfaceCount: CreationOptional<number>;
+
+    @Column({
+        type: DataType.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        field: "ACTEDONRESURFACE",
+    })
+    declare actedOnResurface: CreationOptional<boolean>;
 }

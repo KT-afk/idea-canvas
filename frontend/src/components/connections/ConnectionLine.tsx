@@ -12,6 +12,7 @@ import type { Connection } from '../../hooks/useConnections';
 interface ConnectionLineProps {
   connection: Connection;
   onDelete?: (connectionId: string) => void;
+  onNavigateTo?: (positionX: number, positionY: number) => void; // Story 6.6: Navigate to connected card
   zoom?: number;
 }
 
@@ -85,7 +86,7 @@ function calculateArrowAngle(
   return (angle * 180) / Math.PI;
 }
 
-export function ConnectionLine({ connection, onDelete }: ConnectionLineProps) {
+export function ConnectionLine({ connection, onDelete, onNavigateTo }: ConnectionLineProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   // Card dimensions (w-52 = 13rem = 208px, approximate height)
@@ -159,36 +160,97 @@ export function ConnectionLine({ connection, onDelete }: ConnectionLineProps) {
       />
 
       {/* Tooltip on hover */}
-      {isHovered && connection.reason && (
+      {isHovered && (
         <g>
+          {/* Tooltip background */}
           <rect
-            x={(sourceX + targetX) / 2 - 100}
-            y={(sourceY + targetY) / 2 - 30}
-            width={200}
-            height={40}
-            fill="rgba(0,0,0,0.8)"
-            rx={4}
+            x={(sourceX + targetX) / 2 - 110}
+            y={(sourceY + targetY) / 2 - 52}
+            width={220}
+            height={connection.reason ? 100 : 68}
+            fill="rgba(15,15,15,0.88)"
+            rx={6}
           />
+          {/* Reason text */}
+          {connection.reason && (
+            <text
+              x={(sourceX + targetX) / 2}
+              y={(sourceY + targetY) / 2 - 32}
+              textAnchor="middle"
+              fill="white"
+              fontSize={11}
+              style={{ pointerEvents: 'none' }}
+            >
+              {connection.reason.length > 30 ? connection.reason.slice(0, 30) + '…' : connection.reason}
+            </text>
+          )}
+          {/* Delete hint */}
           <text
             x={(sourceX + targetX) / 2}
-            y={(sourceY + targetY) / 2 - 10}
-            textAnchor="middle"
-            fill="white"
-            fontSize={12}
-            style={{ pointerEvents: 'none' }}
-          >
-            {connection.reason}
-          </text>
-          <text
-            x={(sourceX + targetX) / 2}
-            y={(sourceY + targetY) / 2 + 8}
+            y={(sourceY + targetY) / 2 - (connection.reason ? 14 : 30)}
             textAnchor="middle"
             fill="#94a3b8"
             fontSize={10}
             style={{ pointerEvents: 'none' }}
           >
-            Click to delete
+            Click line to delete
           </text>
+          {/* Jump to source button */}
+          <g
+            style={{ cursor: 'pointer' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onNavigateTo?.(Number(connection.sourceCard.positionX), Number(connection.sourceCard.positionY));
+            }}
+          >
+            <rect
+              x={(sourceX + targetX) / 2 - 105}
+              y={(sourceY + targetY) / 2 - 2}
+              width={96}
+              height={22}
+              fill="#3b82f6"
+              rx={4}
+            />
+            <text
+              x={(sourceX + targetX) / 2 - 57}
+              y={(sourceY + targetY) / 2 + 13}
+              textAnchor="middle"
+              fill="white"
+              fontSize={10}
+              fontWeight="600"
+              style={{ pointerEvents: 'none' }}
+            >
+              Jump to source
+            </text>
+          </g>
+          {/* Jump to target button */}
+          <g
+            style={{ cursor: 'pointer' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onNavigateTo?.(Number(connection.targetCard.positionX), Number(connection.targetCard.positionY));
+            }}
+          >
+            <rect
+              x={(sourceX + targetX) / 2 + 9}
+              y={(sourceY + targetY) / 2 - 2}
+              width={96}
+              height={22}
+              fill="#3b82f6"
+              rx={4}
+            />
+            <text
+              x={(sourceX + targetX) / 2 + 57}
+              y={(sourceY + targetY) / 2 + 13}
+              textAnchor="middle"
+              fill="white"
+              fontSize={10}
+              fontWeight="600"
+              style={{ pointerEvents: 'none' }}
+            >
+              Jump to target
+            </text>
+          </g>
         </g>
       )}
     </motion.g>
