@@ -9,12 +9,11 @@
  * - Active vs archived vs graduated breakdown
  * - Ideas graduated to plans (graduation events in activity log)
  * - Connection usage (total connections)
- * - Resurfacing stats (total resurface events, acted-on rate)
- * - Average idea lifespan (created → graduated, when available)
+ * - Resurfacing stats (total resurface events, acted-on count)
  */
 
 import express from 'express';
-import { Op, fn, col, literal } from 'sequelize';
+import { fn, col } from 'sequelize';
 import Notes from '../models/NOTES';
 import ActivityLog from '../models/ACTIVITY_LOG';
 import Connections from '../models/CONNECTIONS';
@@ -44,7 +43,7 @@ analyticsRouter.get('/analytics', async (_req, res) => {
     const getCount = (type: string, status: string) =>
       countMap[type]?.[status] ?? 0;
 
-    const totalNotes = Object.values(countMap).reduce(
+    const totalItems = Object.values(countMap).reduce(
       (sum, statuses) => sum + Object.values(statuses).reduce((s, n) => s + n, 0),
       0
     );
@@ -64,17 +63,15 @@ analyticsRouter.get('/analytics', async (_req, res) => {
       getCount('note', 'archived') + getCount('idea', 'archived') + getCount('plan', 'archived');
 
     // --- Activity log stats ---
-    // Count graduation events
     const graduationEvents = await ActivityLog.count({
       where: { eventType: 'graduated' },
     });
 
-    // Count resurfacing events
     const resurfaceEvents = await ActivityLog.count({
       where: { eventType: 'resurfaced' },
     });
 
-    // Count ideas that were acted-on after resurfacing
+    // Count ideas that were acted-on after resurfacing (boolean per note)
     const actedOnCount = await Notes.count({
       where: {
         actedOnResurface: true,
@@ -83,25 +80,21 @@ analyticsRouter.get('/analytics', async (_req, res) => {
     });
 
     // --- Connection stats ---
+    // P7-I2 fix: removed connectedNotes (only counted source side, misleading).
+    // totalConnections is accurate and sufficient.
     const totalConnections = await Connections.count();
 
-    // Notes that have at least one connection (approximation via distinct source/target count)
-    // We count unique source card IDs in connections
-    const connectedNotes = await Connections.count({
-      distinct: true,
-      col: 'SOURCECARDID',
-    });
-
-    // --- Resurfacing acted-on rate ---
-    const resurfaceActedOnRate =
-      resurfaceEvents > 0
-        ? Math.round((actedOnCount / resurfaceEvents) * 100)
-        : 0;
+    // --- Resurfacing rate ---
+    // P7-I4 fix: removed the actedOnCount/resurfaceEvents rate computation.
+    // actedOnResurface is a boolean per-note (set once); resurfaceEvents is a
+    // cumulative ActivityLog count across all sessions — dividing them produces
+    // a misleading percentage. We now surface raw numbers only; the frontend
+    // displays "X resurfaces, Y acted on" without a computed rate.
 
     res.status(200).json({
       data: {
         // Overview
-        totalItems: totalNotes,
+        totalItems,
         totalNotes: getCount('note', 'active') + getCount('note', 'archived') + getCount('note', 'graduated'),
         totalIdeas,
         totalPlans,
@@ -114,15 +107,13 @@ analyticsRouter.get('/analytics', async (_req, res) => {
         totalArchivedAll,
 
         // Graduation
-        graduationEvents, // Activity log graduation count (may differ from graduatedIdeas if type was changed back)
+        graduationEvents,
 
         // Connections
         totalConnections,
-        connectedNotes, // Unique notes acting as connection source
 
         // Resurfacing
         resurfaceEvents,
-        resurfaceActedOnRate, // % 0-100
         actedOnCount,
       },
     });

@@ -176,14 +176,14 @@ export function InsightsDashboard({ open, onOpenChange }: InsightsDashboardProps
                 icon={GitBranch}
                 label="Connections made"
                 value={data.totalConnections}
-                sub={`${data.connectedNotes} cards connected`}
+                sub={data.totalConnections === 1 ? '1 total connection' : `${data.totalConnections} total connections`}
                 accent="bg-sky-400/20 text-sky-600"
               />
               <StatCard
                 icon={Repeat2}
-                label="Resurface rate"
-                value={`${data.resurfaceActedOnRate}%`}
-                sub={`${data.resurfaceEvents} resurfaces, ${data.actedOnCount} acted on`}
+                label="Resurfacing"
+                value={data.resurfaceEvents}
+                sub={`${data.actedOnCount} acted on after resurface`}
                 accent="bg-green-400/20 text-green-600"
               />
             </div>

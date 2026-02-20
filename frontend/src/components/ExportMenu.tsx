@@ -10,6 +10,7 @@
 
 import { useState } from 'react';
 import { Download, FileText, FileJson, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { fetchActivityLog } from '../services/activityLogService';
 import { fetchNextTimeNotes } from '../services/nextTimeNotesService';
 import type { Note, ActivityLogEntry, NextTimeNote } from '../types/types';
@@ -160,6 +161,8 @@ export function ExportMenu({ note }: ExportMenuProps) {
         const content = buildJSON(note, activity, nextTime);
         triggerDownload(`${filename}.json`, content, 'application/json');
       }
+    } catch (_err) {
+      toast.error('Export failed. Please try again.');
     } finally {
       setIsExporting(false);
     }

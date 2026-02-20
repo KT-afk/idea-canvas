@@ -26,11 +26,9 @@ export interface AnalyticsData {
 
   // Connections
   totalConnections: number;
-  connectedNotes: number;
 
   // Resurfacing
   resurfaceEvents: number;
-  resurfaceActedOnRate: number; // 0-100
   actedOnCount: number;
 }
 
