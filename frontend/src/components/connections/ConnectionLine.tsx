@@ -89,8 +89,8 @@ function calculateArrowAngle(
 export function ConnectionLine({ connection, onDelete, onNavigateTo }: ConnectionLineProps) {
   const [isHovered, setIsHovered] = useState(false);
 
-  // Card dimensions (w-52 = 13rem = 208px, approximate height)
-  const cardWidth = 208;
+  // Card dimensions (w-56 = 14rem = 224px, approximate height)
+  const cardWidth = 224;
   const cardHeight = 120; // Approximate height for center
 
   // Calculate line endpoints (center of cards) - ensure numbers

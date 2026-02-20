@@ -241,9 +241,11 @@ function App() {
   }, []);
 
   // Epic 7: Resurface a forgotten idea 2s after load
+  // Only enable once notes have loaded and at least one idea exists (avoids useless API call on empty boards)
+  const hasIdeas = notes.some((n: Note) => n.type === 'idea' && (n.status ?? 'active') === 'active');
   useResurfacing({
     frequency: preferences?.resurfaceFrequency ?? 'normal',
-    enabled: !!currentBoardId,
+    enabled: !!currentBoardId && !isLoading && hasIdeas,
     onView: (idea) => handleNavigateTo(idea.positionX, idea.positionY),
   });
 
