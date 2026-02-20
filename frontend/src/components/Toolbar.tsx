@@ -2,7 +2,9 @@ import { Search } from "lucide-react";
 import { BoardSwitcher } from "./BoardSwitcher";
 import { Button } from "./ui/button";
 import { FindConnectionsButton } from "./connections/FindConnectionsButton";
+import { ResurfacingPreferencesPopover } from "./ResurfacingPreferencesPopover";
 import type { Board } from "../types/types";
+import type { ResurfaceFrequency } from "../hooks/usePreferences";
 
 interface ToolbarProps {
   boards: Board[];
@@ -10,6 +12,10 @@ interface ToolbarProps {
   onBoardChange: (boardId: string) => void;
   onSearch?: () => void;
   onFindConnections?: () => void; // Story 6.3
+  // Story 7.4: Resurfacing frequency preferences
+  resurfaceFrequency?: string;
+  onResurfaceFrequencyChange?: (frequency: ResurfaceFrequency) => void;
+  isUpdatingFrequency?: boolean;
 }
 
 export function Toolbar({
@@ -18,6 +24,9 @@ export function Toolbar({
   onBoardChange,
   onSearch,
   onFindConnections,
+  resurfaceFrequency,
+  onResurfaceFrequencyChange,
+  isUpdatingFrequency,
 }: ToolbarProps) {
   return (
     <div 
@@ -50,6 +59,15 @@ export function Toolbar({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* Story 7.4: Resurfacing frequency preferences */}
+        {onResurfaceFrequencyChange && (
+          <ResurfacingPreferencesPopover
+            currentFrequency={resurfaceFrequency}
+            onFrequencyChange={onResurfaceFrequencyChange}
+            isUpdating={isUpdatingFrequency}
+          />
+        )}
+
         {/* Find Connections Button - Story 6.3 */}
         {onFindConnections && (
           <FindConnectionsButton 

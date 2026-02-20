@@ -54,7 +54,7 @@ function App() {
   });
 
   // Story 3.4: Fetch user preferences
-  const { preferences } = usePreferences();
+  const { preferences, setResurfaceFrequency, isUpdatingFrequency } = usePreferences();
 
   const {
     data: notes = [],
@@ -351,6 +351,9 @@ function App() {
           onBoardChange={setCurrentBoardId}
           onSearch={() => setIsCommandPaletteOpen(true)}
           onFindConnections={() => setIsConnectionsPanelOpen(true)}
+          resurfaceFrequency={preferences?.resurfaceFrequency}
+          onResurfaceFrequencyChange={setResurfaceFrequency}
+          isUpdatingFrequency={isUpdatingFrequency}
         />
         <div className="flex-1">
           <EmptyState onAdd={() => handleAddNote('note')} />
@@ -367,6 +370,9 @@ function App() {
           onBoardChange={setCurrentBoardId}
           onSearch={() => setIsCommandPaletteOpen(true)}
           onFindConnections={() => setIsConnectionsPanelOpen(true)}
+          resurfaceFrequency={preferences?.resurfaceFrequency}
+          onResurfaceFrequencyChange={setResurfaceFrequency}
+          isUpdatingFrequency={isUpdatingFrequency}
         />
         
         <BoardCanvas
