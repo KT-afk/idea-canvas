@@ -78,11 +78,13 @@ export async function suggestConnections(
   minConfidence: number = 0.2,
   useAI: boolean = isAIAvailable() // Auto-detect AI availability or force keyword matching
 ): Promise<ConnectionSuggestion[]> {
-  // Get all active cards on the board
+  // Get all active idea cards on the board
+  // Story 8.4: Exclude Plans — connection suggestions are only for ideas and notes
   const cards = await Notes.findAll({
     where: { 
       boardId,
-      status: 'active' // Only suggest connections for active cards
+      status: 'active', // Only suggest connections for active cards
+      type: { [Op.in]: ['note', 'idea'] }, // Exclude plans from auto-connection suggestions
     },
     attributes: ['id', 'content', 'type'],
   });
@@ -231,17 +233,23 @@ export async function suggestConnectionsForCard(
   cardId: string,
   minConfidence: number = 0.2
 ): Promise<ConnectionSuggestion[]> {
-  // Get the target card
+  // Get the target card — only suggest connections for notes and ideas (not plans)
   const targetCard = await Notes.findByPk(cardId);
   if (!targetCard) {
     throw new Error('Card not found');
   }
-  
-  // Get all other cards on the same board
+
+  // Story 8.4: Plans don't receive connection suggestions
+  if (targetCard.type === 'plan') {
+    return [];
+  }
+
+  // Get all other non-plan active cards on the same board
   const otherCards = await Notes.findAll({
     where: {
       boardId: targetCard.boardId,
       status: 'active',
+      type: { [Op.in]: ['note', 'idea'] }, // Story 8.4: exclude plans
       id: { [require('sequelize').Op.ne]: cardId } // Exclude the target card
     },
     attributes: ['id', 'content', 'type'],

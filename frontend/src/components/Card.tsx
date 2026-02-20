@@ -529,7 +529,10 @@ export function Card({
 
       {/* Epic 8: Idea History Timeline — shown on idea and plan cards */}
       {(type === 'idea' || type === 'plan') && !isNew && editableText.trim() !== '' && (
-        <IdeaTimeline noteId={id} />
+        <IdeaTimeline
+          noteId={id}
+          note={{ id, content, type, status, positionX, positionY, backgroundColor, textColor, zIndex }}
+        />
       )}
 
       {/* Epic 8: Graduate to Plan button — shown only on idea cards */}

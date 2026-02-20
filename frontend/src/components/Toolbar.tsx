@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { BarChart3, Search } from "lucide-react";
 import { BoardSwitcher } from "./BoardSwitcher";
 import { Button } from "./ui/button";
 import { FindConnectionsButton } from "./connections/FindConnectionsButton";
@@ -22,6 +22,8 @@ interface ToolbarProps {
   currentTheme?: Theme;
   onThemeChange?: (theme: string) => void;
   isUpdatingTheme?: boolean;
+  // Story 8.5: Insights dashboard
+  onInsights?: () => void;
 }
 
 export function Toolbar({
@@ -36,6 +38,7 @@ export function Toolbar({
   currentTheme,
   onThemeChange,
   isUpdatingTheme,
+  onInsights,
 }: ToolbarProps) {
   return (
     <div 
@@ -68,6 +71,20 @@ export function Toolbar({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* Story 8.5: Insights dashboard */}
+        {onInsights && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onInsights}
+            className="gap-2 text-muted-foreground hover:text-foreground"
+            aria-label="View idea insights"
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span className="hidden sm:inline">Insights</span>
+          </Button>
+        )}
+
         {/* Story 4.2/4.4: Theme switcher */}
         {onThemeChange && currentTheme && (
           <ThemeSwitcherPopover

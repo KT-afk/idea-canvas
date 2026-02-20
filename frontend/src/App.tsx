@@ -17,6 +17,7 @@ import { Toolbar } from "./components/Toolbar"; // Professional toolbar
 import { CommandPalette } from "./components/CommandPalette"; // Story 5.1
 import { ConnectionSuggestionsPanel } from "./components/connections/ConnectionSuggestionsPanel"; // Story 6.3
 import { ConnectionLines } from "./components/connections/ConnectionLines"; // Story 6.4
+import { InsightsDashboard } from "./components/InsightsDashboard"; // Story 8.5
 import { useNoteMutations } from "./hooks/useNoteMutations";
 import { useBoardMutations } from "./hooks/useBoardMutations"; // Story 3.1
 import { usePreferences } from "./hooks/usePreferences"; // Story 3.4
@@ -128,6 +129,9 @@ function App() {
 
   // Story 6.3: Connection suggestions panel state
   const [isConnectionsPanelOpen, setIsConnectionsPanelOpen] = useState(false);
+
+  // Story 8.5: Insights dashboard state
+  const [isInsightsDashboardOpen, setIsInsightsDashboardOpen] = useState(false);
 
   // Issue #4: Calculate archived count for badge
   const archivedCount = useMemo(() => {
@@ -361,6 +365,7 @@ function App() {
           currentTheme={currentTheme}
           onThemeChange={setTheme}
           isUpdatingTheme={isUpdatingTheme}
+          onInsights={() => setIsInsightsDashboardOpen(true)}
         />
         <div className="flex-1">
           <EmptyState onAdd={() => handleAddNote('note')} />
@@ -383,6 +388,7 @@ function App() {
           currentTheme={currentTheme}
           onThemeChange={setTheme}
           isUpdatingTheme={isUpdatingTheme}
+          onInsights={() => setIsInsightsDashboardOpen(true)}
         />
         
         <BoardCanvas
@@ -499,6 +505,12 @@ function App() {
           boardId={currentBoardId}
           onConnectionCreated={() => refetch()}
           onNavigateTo={handleNavigateTo}
+        />
+
+        {/* Story 8.5: Insights Dashboard */}
+        <InsightsDashboard
+          open={isInsightsDashboardOpen}
+          onOpenChange={setIsInsightsDashboardOpen}
         />
       </>
     );

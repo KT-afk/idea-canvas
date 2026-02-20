@@ -1,6 +1,7 @@
 /**
  * IdeaTimeline Component
  * Epic 8, Story 8.3: Idea Evolution — scrollable activity history for a card
+ * Epic 8, Story 8.6: Export trigger added to history panel
  *
  * Shows a chronological list of activity events (created, edited, graduated, etc.)
  * with human-readable labels and relative timestamps.
@@ -9,10 +10,13 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useActivityLog } from '../hooks/useActivityLog';
-import type { ActivityEventType, ActivityLogEntry } from '../types/types';
+import { ExportMenu } from './ExportMenu';
+import type { ActivityEventType, ActivityLogEntry, Note } from '../types/types';
 
 interface IdeaTimelineProps {
   noteId: string;
+  /** Full note object needed for export (Story 8.6) */
+  note?: Note;
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -60,7 +64,7 @@ function EventDot({ type }: { type: ActivityEventType }) {
   );
 }
 
-export function IdeaTimeline({ noteId }: IdeaTimelineProps) {
+export function IdeaTimeline({ noteId, note }: IdeaTimelineProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { data: entries = [], isLoading } = useActivityLog(noteId, isOpen);
 
@@ -105,6 +109,9 @@ export function IdeaTimeline({ noteId }: IdeaTimelineProps) {
           ))}
         </div>
       )}
+
+      {/* Story 8.6: Export menu — shown when history is expanded and note is provided */}
+      {isOpen && note && <ExportMenu note={note} />}
     </div>
   );
 }
