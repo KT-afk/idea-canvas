@@ -305,6 +305,67 @@ export function useNoteMutations() {
     },
   });
 
+  // Story 2.4: Move note to a different board with optimistic removal + undo toast
+  const moveNoteMutation = useMutation({
+    mutationFn: ({ id, targetBoardId }: { id: string; sourceBoardId: string; targetBoardId: string; targetBoardName: string; note: Note }) =>
+      updateNote(id, { boardId: targetBoardId }),
+    onMutate: async (variables) => {
+      const { id, sourceBoardId, note } = variables;
+      const queryKey = ["notes", sourceBoardId];
+      await queryClient.cancelQueries({ queryKey });
+      const previousNotes = queryClient.getQueryData<Note[]>(queryKey);
+
+      // Optimistically remove the note from the source board cache
+      queryClient.setQueryData<Note[]>(queryKey, (oldNotes = []) =>
+        oldNotes.filter((n) => n.id !== id)
+      );
+
+      return { previousNotes, queryKey, note };
+    },
+    onSuccess: (_updatedNote, variables, context) => {
+      const { targetBoardName, sourceBoardId, id, note } = variables;
+
+      // Invalidate the target board so it will refetch with the moved note
+      queryClient.invalidateQueries({ queryKey: ["notes", variables.targetBoardId] });
+
+      // Show toast with undo action (5-second window)
+      toast.success(`Moved to "${targetBoardName}"`, {
+        duration: 5000,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            // Undo: move note back to source board
+            updateNote(id, { boardId: sourceBoardId })
+              .then(() => {
+                // Re-add the original note back to the source board cache
+                queryClient.setQueryData<Note[]>(["notes", sourceBoardId], (oldNotes = []) => [
+                  ...oldNotes,
+                  { ...note, boardId: sourceBoardId },
+                ]);
+                // Remove from target board cache
+                queryClient.invalidateQueries({ queryKey: ["notes", variables.targetBoardId] });
+                toast.success('Move undone');
+              })
+              .catch(() => {
+                toast.error('Failed to undo move');
+                // Restore from context as fallback
+                if (context?.previousNotes) {
+                  queryClient.setQueryData(["notes", sourceBoardId], context.previousNotes);
+                }
+              });
+          },
+        },
+      });
+    },
+    onError: (_err, variables, context) => {
+      // Rollback: re-add the note to the source board
+      if (context?.previousNotes && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousNotes);
+      }
+      toast.error(`Failed to move to "${variables.targetBoardName}"`);
+    },
+  });
+
   return {
     addNote: addNoteMutation,
     editNote: editNoteMutation,
@@ -315,5 +376,6 @@ export function useNoteMutations() {
     deleteNote: deleteNoteMutation,
     archiveNote: archiveNoteMutation,
     restoreNote: restoreNoteMutation,
+    moveNote: moveNoteMutation,
   };
 }

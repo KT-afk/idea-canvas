@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { ColorPickerPopover } from "./Popover";
 import { NextTimeNotes } from "./NextTimeNotes";
 import { IdeaTimeline } from "./IdeaTimeline";
+import { MoveToBoardPopover } from "./MoveToBoardPopover";
+import type { Board } from "@/types/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +50,10 @@ export interface CardProps {
   onDragEndSave: (id: string, positionX: number, positionY: number) => void;
   onNewNoteFocused?: (id: string) => void; // Story 1.3: Callback when new note receives focus
   onGraduate?: (id: string) => void; // Epic 8: Promote idea to plan
+  // Story 2.4: Move to different board
+  boards?: Board[];
+  currentBoardId?: string;
+  onMove?: (id: string, targetBoardId: string, targetBoardName: string) => void;
 }
 
 // Story 1.6: Base Card component - handles all shared logic
@@ -76,6 +82,9 @@ export function Card({
   onDragEndSave,
   onNewNoteFocused,
   onGraduate,
+  boards,
+  currentBoardId,
+  onMove,
 }: Readonly<CardProps>) {
   // Story 1.3: Type indicator icon
   const TypeIcon = type === 'idea' ? Lightbulb : type === 'plan' ? ClipboardList : StickyNote;
@@ -470,7 +479,7 @@ export function Card({
         aria-label="Note content"
       />
 
-      {/* Card footer: Archive/Restore + Type toggle — inline so dynamic sections below don't overlap */}
+      {/* Card footer: Archive/Restore + Move + Type toggle — inline so dynamic sections below don't overlap */}
       <div className="flex items-center justify-between mt-1">
         {/* Story 2.3: Archive/Restore button - Issue #5: Hide for new/empty notes */}
         {(status === 'archived' || (!isNew && editableText.trim() !== '')) ? (
@@ -492,6 +501,15 @@ export function Card({
             )}
           </button>
         ) : <span />}
+
+        {/* Story 2.4: Move to board button — only shown when there are other boards and card has content */}
+        {onMove && boards && currentBoardId && !isNew && editableText.trim() !== '' && (
+          <MoveToBoardPopover
+            boards={boards}
+            currentBoardId={currentBoardId}
+            onMove={(targetBoardId, targetBoardName) => onMove(id, targetBoardId, targetBoardName)}
+          />
+        )}
 
         {/* Story 1.5: Interactive type toggle button */}
         <button

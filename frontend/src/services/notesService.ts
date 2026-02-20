@@ -57,7 +57,8 @@ export async function createNote(note: {
 }
 
 // ✅ Update note content or position
-export async function updateNote(id: string, payload: Partial<Pick<Note, "content" | "positionX" | "positionY" | "backgroundColor" | "textColor" | "type" | "status">>): Promise<Note> {
+// Story 2.4: boardId added to support moving a note to a different board
+export async function updateNote(id: string, payload: Partial<Pick<Note, "content" | "positionX" | "positionY" | "backgroundColor" | "textColor" | "type" | "status" | "boardId">>): Promise<Note> {
   const res = await fetch(`${API_URL}/api/notes/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

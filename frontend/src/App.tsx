@@ -68,7 +68,7 @@ function App() {
   });
 
   // Initialize mutations before using them in effects
-  const { addNote, editNote, updatePosition, updateColor, updateTextColor, updateType, deleteNote, archiveNote, restoreNote } = useNoteMutations();
+  const { addNote, editNote, updatePosition, updateColor, updateTextColor, updateType, deleteNote, archiveNote, restoreNote, moveNote } = useNoteMutations();
   const { createBoard } = useBoardMutations(); // Story 3.1
   const { order, bringToFront } = useZIndexManager(notes);
 
@@ -254,6 +254,14 @@ function App() {
     updateType.mutate({ id, type: 'plan', boardId: currentBoardId ?? undefined });
   }, [updateType, currentBoardId]);
 
+  // Story 2.4: Move a note to a different board
+  const handleMoveNote = useCallback((id: string, targetBoardId: string, targetBoardName: string) => {
+    if (!currentBoardId) return;
+    const note = notes.find((n: Note) => n.id === id);
+    if (!note) return;
+    moveNote.mutate({ id, sourceBoardId: currentBoardId, targetBoardId, targetBoardName, note });
+  }, [moveNote, currentBoardId, notes]);
+
   // Zoom control handlers
   const handleZoomIn = () => {
     setZoom((prev) => Math.min(2, prev + 0.1));
@@ -414,6 +422,10 @@ function App() {
                     updatePosition.mutate({ id, positionX, positionY, boardId: currentBoardId ?? undefined }),
                   onNewNoteFocused: handleClearNewNote,
                   onGraduate: handleGraduate,
+                  // Story 2.4: Move to board
+                  boards,
+                  currentBoardId: currentBoardId ?? undefined,
+                  onMove: handleMoveNote,
                 };
 
                 // Render the appropriate card component based on type
