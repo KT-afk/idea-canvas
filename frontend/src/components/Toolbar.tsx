@@ -3,8 +3,10 @@ import { BoardSwitcher } from "./BoardSwitcher";
 import { Button } from "./ui/button";
 import { FindConnectionsButton } from "./connections/FindConnectionsButton";
 import { ResurfacingPreferencesPopover } from "./ResurfacingPreferencesPopover";
+import { ThemeSwitcherPopover } from "./ThemeSwitcherPopover";
 import type { Board } from "../types/types";
 import type { ResurfaceFrequency } from "../hooks/usePreferences";
+import type { Theme } from "../hooks/useTheme";
 
 interface ToolbarProps {
   boards: Board[];
@@ -16,6 +18,10 @@ interface ToolbarProps {
   resurfaceFrequency?: string;
   onResurfaceFrequencyChange?: (frequency: ResurfaceFrequency) => void;
   isUpdatingFrequency?: boolean;
+  // Story 4.2/4.4: Theme switcher
+  currentTheme?: Theme;
+  onThemeChange?: (theme: string) => void;
+  isUpdatingTheme?: boolean;
 }
 
 export function Toolbar({
@@ -27,6 +33,9 @@ export function Toolbar({
   resurfaceFrequency,
   onResurfaceFrequencyChange,
   isUpdatingFrequency,
+  currentTheme,
+  onThemeChange,
+  isUpdatingTheme,
 }: ToolbarProps) {
   return (
     <div 
@@ -59,6 +68,15 @@ export function Toolbar({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* Story 4.2/4.4: Theme switcher */}
+        {onThemeChange && currentTheme && (
+          <ThemeSwitcherPopover
+            currentTheme={currentTheme}
+            onThemeChange={onThemeChange}
+            isUpdating={isUpdatingTheme}
+          />
+        )}
+
         {/* Story 7.4: Resurfacing frequency preferences */}
         {onResurfaceFrequencyChange && (
           <ResurfacingPreferencesPopover

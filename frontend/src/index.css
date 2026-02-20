@@ -42,31 +42,33 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   TYPOGRAPHY SYSTEM
+   ═══════════════════════════════════════════════════════════════ */
 :root {
-  --radius: 0.5rem;
-  
-  /* ✍️ TYPOGRAPHY SYSTEM */
-  /* Serif for headings - elegant, professional */
-  --font-display: 'Playfair Display', Georgia, serif;
-  /* Sans-serif for body - clean, readable */
+  /* Story 4.4: Fraunces serif for headings - warm vintage personality */
+  --font-display: 'Fraunces', 'Playfair Display', Georgia, serif;
+  /* Clean sans-serif for body text */
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   /* Handwriting for note cards - personal, creative */
   --font-handwriting: 'Caveat', cursive;
-  
-  /* 🎨 PURPLE WORKSHOP THEME (BMAD Recommended - Dark/Light) */
-  /* Deep purple charcoal background */
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THEME 1: PURPLE WORKSHOP (Dark — Default)
+   Deep purple charcoal. Vibrant primary.
+   ═══════════════════════════════════════════════════════════════ */
+:root,
+:root.theme-purple-workshop {
+  --radius: 0.5rem;
   --background: #1C1625;
-  /* Warm purple-tinted white text */
   --foreground: #F5F0FA;
-  /* Elevated surface - slightly lighter purple */
   --card: #2A2438;
   --card-foreground: #F5F0FA;
   --popover: #2A2438;
   --popover-foreground: #F5F0FA;
-  /* Primary: Vibrant Purple (brand color) */
   --primary: #A855F7;
   --primary-foreground: #FFFFFF;
-  /* Secondary: Muted purple */
   --secondary: #4C3A5F;
   --secondary-foreground: #E9D5FF;
   --muted: #3D2F4D;
@@ -75,17 +77,14 @@
   --accent-foreground: #FFFFFF;
   --destructive: #EF4444;
   --destructive-foreground: #FFFFFF;
-  /* Borders: Subtle purple-gray */
   --border: #3D2F4D;
   --input: #3D2F4D;
   --ring: #A855F7;
-  /* Chart colors: Purple-based palette */
   --chart-1: #A855F7;
   --chart-2: #EC4899;
   --chart-3: #8B5CF6;
   --chart-4: #D946EF;
   --chart-5: #7C3AED;
-  /* Sidebar matching main theme */
   --sidebar: #2A2438;
   --sidebar-foreground: #F5F0FA;
   --sidebar-primary: #A855F7;
@@ -96,7 +95,211 @@
   --sidebar-ring: #A855F7;
 }
 
-/* 🌙 WARM VINTAGE THEME (Your Original - Keep as .theme-warm) */
+/* ═══════════════════════════════════════════════════════════════
+   THEME 2: AMETHYST NIGHT (Dark)
+   Deep navy-purple. Softer amethyst primary.
+   ═══════════════════════════════════════════════════════════════ */
+:root.theme-amethyst-night {
+  --radius: 0.5rem;
+  --background: #0F0D1A;
+  --foreground: #EDE8F8;
+  --card: #1A1728;
+  --card-foreground: #EDE8F8;
+  --popover: #1A1728;
+  --popover-foreground: #EDE8F8;
+  --primary: #9B72CF;
+  --primary-foreground: #FFFFFF;
+  --secondary: #2E2450;
+  --secondary-foreground: #D4BBFB;
+  --muted: #241D3A;
+  --muted-foreground: #9D8AB5;
+  --accent: #6D4AB8;
+  --accent-foreground: #FFFFFF;
+  --destructive: #E55353;
+  --destructive-foreground: #FFFFFF;
+  --border: #2E2450;
+  --input: #2E2450;
+  --ring: #9B72CF;
+  --chart-1: #9B72CF;
+  --chart-2: #D080B8;
+  --chart-3: #7B5EA7;
+  --chart-4: #C070D8;
+  --chart-5: #6D4AB8;
+  --sidebar: #1A1728;
+  --sidebar-foreground: #EDE8F8;
+  --sidebar-primary: #9B72CF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #2E2450;
+  --sidebar-accent-foreground: #D4BBFB;
+  --sidebar-border: #2E2450;
+  --sidebar-ring: #9B72CF;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THEME 3: GRAPE NOIR (Dark)
+   Near-black with warm grape undertones. Luxe feel.
+   ═══════════════════════════════════════════════════════════════ */
+:root.theme-grape-noir {
+  --radius: 0.375rem;
+  --background: #110E18;
+  --foreground: #F0EAF8;
+  --card: #1C1826;
+  --card-foreground: #F0EAF8;
+  --popover: #1C1826;
+  --popover-foreground: #F0EAF8;
+  --primary: #C084FC;
+  --primary-foreground: #110E18;
+  --secondary: #3B2D52;
+  --secondary-foreground: #E9D5FF;
+  --muted: #2C2240;
+  --muted-foreground: #A590C0;
+  --accent: #9333EA;
+  --accent-foreground: #FFFFFF;
+  --destructive: #F87171;
+  --destructive-foreground: #110E18;
+  --border: #332748;
+  --input: #332748;
+  --ring: #C084FC;
+  --chart-1: #C084FC;
+  --chart-2: #F472B6;
+  --chart-3: #A855F7;
+  --chart-4: #E879F9;
+  --chart-5: #9333EA;
+  --sidebar: #1C1826;
+  --sidebar-foreground: #F0EAF8;
+  --sidebar-primary: #C084FC;
+  --sidebar-primary-foreground: #110E18;
+  --sidebar-accent: #3B2D52;
+  --sidebar-accent-foreground: #E9D5FF;
+  --sidebar-border: #332748;
+  --sidebar-ring: #C084FC;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THEME 4: WARM PURPLE (Light)
+   Cream background, warm purple primary. Inviting.
+   ═══════════════════════════════════════════════════════════════ */
+:root.theme-warm-purple {
+  --radius: 0.625rem;
+  --background: #FBF9FE;
+  --foreground: #2D1B4E;
+  --card: #FFFFFF;
+  --card-foreground: #2D1B4E;
+  --popover: #FFFFFF;
+  --popover-foreground: #2D1B4E;
+  --primary: #7C3AED;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EDE9F8;
+  --secondary-foreground: #5B21B6;
+  --muted: #F3F0FC;
+  --muted-foreground: #7C6F9A;
+  --accent: #EDE9F8;
+  --accent-foreground: #5B21B6;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #DDD5F5;
+  --input: #DDD5F5;
+  --ring: #7C3AED;
+  --chart-1: #7C3AED;
+  --chart-2: #DB2777;
+  --chart-3: #6D28D9;
+  --chart-4: #C026D3;
+  --chart-5: #5B21B6;
+  --sidebar: #F3F0FC;
+  --sidebar-foreground: #2D1B4E;
+  --sidebar-primary: #7C3AED;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EDE9F8;
+  --sidebar-accent-foreground: #5B21B6;
+  --sidebar-border: #DDD5F5;
+  --sidebar-ring: #7C3AED;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THEME 5: DUSTY VIOLET (Light)
+   Warm off-white, dusty violet tones. Vintage stationery feel.
+   ═══════════════════════════════════════════════════════════════ */
+:root.theme-dusty-violet {
+  --radius: 0.5rem;
+  --background: #F8F5F2;
+  --foreground: #3B2D4A;
+  --card: #FFF9F5;
+  --card-foreground: #3B2D4A;
+  --popover: #FFF9F5;
+  --popover-foreground: #3B2D4A;
+  --primary: #8B5CF6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EAE2F5;
+  --secondary-foreground: #6D28D9;
+  --muted: #F0EAED;
+  --muted-foreground: #8C7A9E;
+  --accent: #EAE2F5;
+  --accent-foreground: #6D28D9;
+  --destructive: #C53030;
+  --destructive-foreground: #FFFFFF;
+  --border: #D8CCEB;
+  --input: #D8CCEB;
+  --ring: #8B5CF6;
+  --chart-1: #8B5CF6;
+  --chart-2: #C084FC;
+  --chart-3: #A78BFA;
+  --chart-4: #D946EF;
+  --chart-5: #7C3AED;
+  --sidebar: #EAE2F5;
+  --sidebar-foreground: #3B2D4A;
+  --sidebar-primary: #8B5CF6;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F0EAED;
+  --sidebar-accent-foreground: #6D28D9;
+  --sidebar-border: #D8CCEB;
+  --sidebar-ring: #8B5CF6;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THEME 6: LAVENDER CREAM (Light)
+   Soft lavender whites. Airy, minimal, serene.
+   ═══════════════════════════════════════════════════════════════ */
+:root.theme-lavender-cream {
+  --radius: 0.75rem;
+  --background: #FAFAFE;
+  --foreground: #1E1035;
+  --card: #FFFFFF;
+  --card-foreground: #1E1035;
+  --popover: #FFFFFF;
+  --popover-foreground: #1E1035;
+  --primary: #A855F7;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F5F0FF;
+  --secondary-foreground: #7E22CE;
+  --muted: #F5F0FF;
+  --muted-foreground: #8B7CAA;
+  --accent: #F0EBFF;
+  --accent-foreground: #7E22CE;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #E8DCFF;
+  --input: #E8DCFF;
+  --ring: #A855F7;
+  --chart-1: #A855F7;
+  --chart-2: #EC4899;
+  --chart-3: #8B5CF6;
+  --chart-4: #D946EF;
+  --chart-5: #7C3AED;
+  --sidebar: #F5F0FF;
+  --sidebar-foreground: #1E1035;
+  --sidebar-primary: #A855F7;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F0EBFF;
+  --sidebar-accent-foreground: #7E22CE;
+  --sidebar-border: #E8DCFF;
+  --sidebar-ring: #A855F7;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THEME 7: WARM VINTAGE (Story 4.4)
+   Espresso background, warm cream text, burnt orange accent.
+   Fraunces serif headings. Paper-grain texture.
+   ═══════════════════════════════════════════════════════════════ */
 :root.theme-warm {
   --radius: 1rem;
   /* Deep Warm Espresso/Charcoal Background */
@@ -108,7 +311,7 @@
   --card-foreground: oklch(0.96 0.015 85);
   --popover: oklch(0.22 0.02 55);
   --popover-foreground: oklch(0.96 0.015 85);
-  /* Primary Accent: Burnt Orange (Bagel Crust) */
+  /* Primary Accent: Burnt Orange */
   --primary: oklch(0.65 0.18 50);
   --primary-foreground: oklch(0.16 0.018 55);
   /* Secondary: Warm Muted Brown */
@@ -119,6 +322,7 @@
   --accent: oklch(0.28 0.02 55);
   --accent-foreground: oklch(0.96 0.015 85);
   --destructive: oklch(0.65 0.20 25);
+  --destructive-foreground: oklch(0.96 0.015 85);
   /* Borders: Subtle warm cream */
   --border: oklch(0.96 0.015 85 / 12%);
   --input: oklch(0.96 0.015 85 / 15%);
@@ -129,7 +333,6 @@
   --chart-3: oklch(0.72 0.16 50);
   --chart-4: oklch(0.80 0.12 350);
   --chart-5: oklch(0.70 0.12 200);
-  /* Sidebar matching main theme */
   --sidebar: oklch(0.22 0.02 55);
   --sidebar-foreground: oklch(0.96 0.015 85);
   --sidebar-primary: oklch(0.65 0.18 50);
@@ -140,9 +343,26 @@
   --sidebar-ring: oklch(0.65 0.18 50);
 }
 
+/* Story 4.4: Paper grain texture on warm vintage body */
+:root.theme-warm body {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THEME TRANSITION (respect prefers-reduced-motion)
+   ═══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      border-color 150ms ease;
+  }
+}
+
 .dark {
-  /* Same as default purple theme - we're already dark by default */
-  /* If you want a lighter purple variant, we can add it later */
+  /* Same as default purple theme — already dark by default */
 }
 
 @layer base {
@@ -153,13 +373,12 @@
     @apply bg-background text-foreground;
     font-family: var(--font-body);
   }
-  /* Apply display font to headings */
+  /* Story 4.4: Apply Fraunces display font to headings */
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     font-weight: 600;
     letter-spacing: -0.02em;
   }
-  /* Specific heading sizes with better hierarchy */
   h1 {
     @apply text-4xl font-bold tracking-tight;
   }

@@ -41,6 +41,32 @@ export const usePreferences = (userId?: string) => {
     }
   });
 
+  // Story 4.2/4.4: Set theme with optimistic UI
+  const setThemeMutation = useMutation({
+    mutationFn: (theme: string) =>
+      preferencesService.updatePreferences({ theme }),
+    onMutate: async (theme) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<UserPreferences>(queryKey);
+
+      // Optimistic update — applies immediately so useTheme reflects it at once
+      queryClient.setQueryData<UserPreferences>(queryKey, (old) => {
+        if (!old) return old;
+        return { ...old, theme };
+      });
+
+      return { previous };
+    },
+    onError: (_err, _theme, context) => {
+      // Rollback optimistic update
+      queryClient.setQueryData(queryKey, context?.previous);
+      toast.warning('Theme saved locally — could not sync to server');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
   // Story 7.4: Set resurfacing frequency with optimistic UI
   const setResurfaceFrequencyMutation = useMutation({
     mutationFn: (frequency: ResurfaceFrequency) =>
@@ -75,6 +101,9 @@ export const usePreferences = (userId?: string) => {
     error,
     setDefaultBoard: setDefaultBoardMutation.mutate,
     isUpdatingDefault: setDefaultBoardMutation.isPending,
+    // Story 4.2/4.4
+    setTheme: setThemeMutation.mutate,
+    isUpdatingTheme: setThemeMutation.isPending,
     // Story 7.4
     setResurfaceFrequency: setResurfaceFrequencyMutation.mutate,
     isUpdatingFrequency: setResurfaceFrequencyMutation.isPending,

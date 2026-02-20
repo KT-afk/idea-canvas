@@ -20,6 +20,7 @@ import { ConnectionLines } from "./components/connections/ConnectionLines"; // S
 import { useNoteMutations } from "./hooks/useNoteMutations";
 import { useBoardMutations } from "./hooks/useBoardMutations"; // Story 3.1
 import { usePreferences } from "./hooks/usePreferences"; // Story 3.4
+import { useTheme } from "./hooks/useTheme"; // Story 4.2/4.4
 import { useZIndexManager } from "./hooks/useZIndexManager";
 import { useResurfacing } from "./hooks/useResurfacing"; // Epic 7
 import { fetchNotesByBoard } from "./services/notesService";
@@ -55,6 +56,9 @@ function App() {
 
   // Story 3.4: Fetch user preferences
   const { preferences, setResurfaceFrequency, isUpdatingFrequency } = usePreferences();
+
+  // Story 4.2/4.4: Theme management (reads preferences.theme, applies CSS class to <html>)
+  const { currentTheme, setTheme, isUpdatingTheme } = useTheme();
 
   const {
     data: notes = [],
@@ -354,6 +358,9 @@ function App() {
           resurfaceFrequency={preferences?.resurfaceFrequency}
           onResurfaceFrequencyChange={setResurfaceFrequency}
           isUpdatingFrequency={isUpdatingFrequency}
+          currentTheme={currentTheme}
+          onThemeChange={setTheme}
+          isUpdatingTheme={isUpdatingTheme}
         />
         <div className="flex-1">
           <EmptyState onAdd={() => handleAddNote('note')} />
@@ -373,6 +380,9 @@ function App() {
           resurfaceFrequency={preferences?.resurfaceFrequency}
           onResurfaceFrequencyChange={setResurfaceFrequency}
           isUpdatingFrequency={isUpdatingFrequency}
+          currentTheme={currentTheme}
+          onThemeChange={setTheme}
+          isUpdatingTheme={isUpdatingTheme}
         />
         
         <BoardCanvas
