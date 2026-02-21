@@ -86,6 +86,7 @@ function findCommonKeywords(wordsA: string[], wordsB: string[]): string[] {
 }
 
 
+/**
  * Story 6.5: Uses AI (OpenAI GPT) when available
  * Story 6.2: Falls back to keyword matching with Jaccard similarity
  * Filters out existing connections
