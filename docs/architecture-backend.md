@@ -1,8 +1,8 @@
-# Backend Architecture - Idea Canvas
+# Backend Architecture — Idea Canvas
 
 ## Overview
 
-The backend is an Express 5 REST API server built with TypeScript. It uses Sequelize ORM with PostgreSQL for data persistence and implements a layered architecture with clear separation of concerns.
+The backend is an Express 5 REST API server built with TypeScript. It uses Sequelize ORM with PostgreSQL for data persistence and follows a strict three-layer architecture: Routes → Services → Models.
 
 ## Technology Stack
 
@@ -10,79 +10,109 @@ The backend is an Express 5 REST API server built with TypeScript. It uses Seque
 |----------|------------|---------|
 | Framework | Express 5 | HTTP server and routing |
 | Language | TypeScript 5.9 | Type safety |
-| ORM | Sequelize 6.37 | Database abstraction |
-| ORM Extension | sequelize-typescript | Decorator-based models |
-| Database | PostgreSQL 14+ | Relational data storage |
+| ORM | Sequelize 6.37 + sequelize-typescript | Decorator-based models, type-safe queries |
+| Database | PostgreSQL 14+ | Relational persistence |
 | Dev Server | ts-node-dev | Hot-reload development |
 
 ## Directory Structure
 
 ```
 backend/src/
-├── index.ts             # Application entry point
-├── config/              # Configuration modules
-│   ├── db.ts            # Database connection setup
-│   └── env.ts           # Environment variables
-├── models/              # Sequelize models (ORM)
-│   ├── NOTES.ts         # Notes table model
-│   └── BOARDS.ts        # Boards table model
-├── routes/              # Express route handlers
-│   └── notes-route.ts   # Notes API endpoints
-└── services/            # Business logic layer
-    └── notes-service.ts # Notes CRUD operations
+├── index.ts                         # App bootstrap: CORS, routes, DB sync, server start
+├── config/
+│   ├── db.ts                        # Sequelize connection (DATABASE_URL or individual vars)
+│   └── env.ts                       # Environment variable validation
+├── models/
+│   ├── NOTES.ts                     # Notes table (cards on the canvas)
+│   ├── BOARDS.ts                    # Boards table
+│   ├── CONNECTIONS.ts               # Connections between two notes
+│   ├── ACTIVITY_LOG.ts              # Append-only event log per note
+│   ├── NEXT_TIME_NOTES.ts           # Checklist items attached to idea/plan cards
+│   └── USER_PREFERENCES.ts          # Per-user settings (theme, resurface freq, etc.)
+├── routes/
+│   ├── notes-route.ts               # Notes CRUD + board-scoped listing
+│   ├── boards-route.ts              # Boards CRUD
+│   ├── connection-route.ts          # Connections CRUD + auto-suggestion endpoints
+│   ├── preferences-route.ts         # User preferences read/write
+│   ├── analytics-route.ts           # Lifecycle analytics aggregation
+│   ├── activity-log-route.ts        # Activity log read
+│   ├── next-time-notes-route.ts     # Next-time notes CRUD
+│   └── resurfacing-route.ts         # Resurfacing candidate + acted-on tracking
+└── services/
+    ├── notes-service.ts             # Notes CRUD operations
+    ├── boards-service.ts            # Boards CRUD operations
+    ├── connection-service.ts        # Connection CRUD + board/card queries
+    ├── auto-connection-service.ts   # Keyword-based connection suggestion engine
+    ├── ai-connection-service.ts     # AI-powered connection suggestions (future)
+    ├── preferences-service.ts       # Preferences upsert logic
+    ├── activity-log-service.ts      # Activity log append + query
+    ├── next-time-notes-service.ts   # Next-time notes CRUD
+    └── resurfacing-service.ts       # Forgotten idea selection logic
 ```
 
 ## Layered Architecture
 
 ```
-┌─────────────────────────────────────┐
-│          Express Routes             │  ← HTTP layer
-│   (routes/notes-route.ts)           │
-├─────────────────────────────────────┤
-│          Service Layer              │  ← Business logic
-│   (services/notes-service.ts)       │
-├─────────────────────────────────────┤
-│          Sequelize Models           │  ← Data access
-│   (models/NOTES.ts, BOARDS.ts)      │
-├─────────────────────────────────────┤
-│          PostgreSQL                 │  ← Persistence
-└─────────────────────────────────────┘
+┌────────────────────────────────────┐
+│           Express Routes           │  HTTP parsing, request validation, response shaping
+├────────────────────────────────────┤
+│           Service Layer            │  Business logic, multi-model queries, transactions
+├────────────────────────────────────┤
+│         Sequelize Models           │  Type-safe data access, schema definition
+├────────────────────────────────────┤
+│           PostgreSQL               │  Relational persistence
+└────────────────────────────────────┘
 ```
 
-## Application Entry Point
+## Application Entry Point (`index.ts`)
 
-### index.ts
-```typescript
-// Key responsibilities:
-1. Configure CORS (localhost + Vercel previews)
-2. Setup JSON body parsing
-3. Health check endpoint (/health)
-4. Mount API routes (/api)
-5. Connect to database
-6. Sync models with sequelize.sync({ alter: true })
-7. Start HTTP server
-```
+1. Configure CORS (localhost:5173, localhost:3000, `FRONTEND_URL`, `*.vercel.app`)
+2. JSON body parsing
+3. Mount all routers under `/api`
+4. Register health check at `/health`
+5. Connect to database and run `sequelize.sync({ alter: true })`
+6. Start HTTP server
 
-### CORS Configuration
-```typescript
-// Allowed origins:
-- http://localhost:5173 (Vite dev)
-- http://localhost:3000 (local backend)
-- process.env.FRONTEND_URL (production)
-- *.vercel.app (preview deployments)
-```
+## Routes
 
-## Database Configuration
+| Router | Mount prefix | Key endpoints |
+|--------|-------------|---------------|
+| `notes-route.ts` | `/api` | `GET /notes`, `POST /notes`, `PUT /notes/:id`, `DELETE /notes/:id`, `GET /notes/board/:boardId` |
+| `boards-route.ts` | `/api` | `GET /boards`, `POST /boards`, `PUT /boards/:id`, `DELETE /boards/:id` |
+| `connection-route.ts` | `/api` | `POST /boards/:boardId/connections`, `GET /boards/:boardId/connections`, `GET /cards/:cardId/connections`, `DELETE /connections/:id`, `GET /boards/:boardId/connection-suggestions`, `GET /cards/:cardId/connection-suggestions` |
+| `preferences-route.ts` | `/api` | `GET /preferences`, `PUT /preferences`, `PUT /preferences/default-board` |
+| `analytics-route.ts` | `/api` | `GET /analytics` |
+| `activity-log-route.ts` | `/api` | `GET /notes/:noteId/activity` |
+| `next-time-notes-route.ts` | `/api` | `GET /notes/:noteId/next-time-notes`, `POST /notes/:noteId/next-time-notes`, `PATCH /next-time-notes/:id/complete`, `DELETE /next-time-notes/:id` |
+| `resurfacing-route.ts` | `/api` | `GET /ideas/resurface`, `PATCH /ideas/:noteId/resurface-acted` |
 
-### Connection Setup (config/db.ts)
-- Supports `DATABASE_URL` (Railway/production) or individual env vars
-- SSL enabled for production environments
-- Auto-discovers models from `../models` directory
+## Services
 
-### Environment Variables
+### `notes-service.ts`
+Standard CRUD. All writes emit an `ActivityLog` entry (`created`, `edited`, `type_changed`, `status_changed`, `graduated`).
+
+### `auto-connection-service.ts`
+Keyword-based suggestion engine:
+- `suggestConnectionsKeywordBased(boardId)` — scores all note pairs on the board by shared keywords; capped at `MAX_CARDS = 100` to bound O(n²) cost; uses a per-card keyword cache to avoid double-computation
+- `suggestConnectionsForCard(cardId, boardId)` — same algorithm for a single card vs all others
+- Shared `buildReason(commonWords)` helper for consistent reason strings
+- Excludes cards of `type = 'plan'` from suggestions
+
+### `resurfacing-service.ts`
+`getForgottenIdea(frequency)` selects one idea that has not been viewed recently, weighted by the user's `resurfaceFrequency` preference (`normal` / `frequent` / `rare` / `off`). Uses a staleness threshold (days since `lastViewedAt` or `createdAt`).
+
+### `preferences-service.ts`
+Upsert pattern: `getOrCreate` on `USER_PREFERENCES` by `userId`; partial `update` for individual fields.
+
+### `activity-log-service.ts`
+Append-only: `appendActivityLog(noteId, eventType, payload?)`. `getActivityLog(noteId)` returns entries newest-first.
+
+## Environment Variables
+
 ```env
 # Production (Railway)
 DATABASE_URL=postgres://...
+FRONTEND_URL=https://your-app.vercel.app
 
 # Development
 DB_HOST=localhost
@@ -93,135 +123,19 @@ DB_PASSWORD=your_password
 PORT=3000
 ```
 
-## Data Models
+## Database Sync Strategy
 
-### Notes Model (models/NOTES.ts)
-```typescript
-@Table({ tableName: "NOTES", timestamps: true })
-class Notes extends Model {
-  id: UUID (PK, auto-generated)
-  content: TEXT (required)
-  x: DECIMAL(10,2) (position)
-  y: DECIMAL(10,2) (position)
-  width: DECIMAL(5,2) (default: 192)
-  height: DECIMAL(5,2) (default: 96)
-  boardId: UUID (FK, nullable)
-  zIndex: INTEGER (default: 0)
-  color: STRING (default: "yellow")
-  textColor: STRING (default: "black")
-  createdAt: TIMESTAMP
-  updatedAt: TIMESTAMP
-}
+`sequelize.sync({ alter: true })` on startup:
+- Creates tables if they don't exist
+- Alters existing columns to match model definitions
+- Safe for development; use explicit migrations for production schema changes
+
+## Scripts
+
+```bash
+npm run dev           # ts-node-dev hot-reload
+npm run build         # tsc
+npm run start         # node dist/index.js
+npm run test          # Jest test suite
+npm run db:migrate    # Sequelize CLI migrations
 ```
-
-### Boards Model (models/BOARDS.ts)
-```typescript
-@Table({ tableName: "BOARDS", timestamps: true })
-class Boards extends Model {
-  id: UUID (PK, auto-generated)
-  name: TEXT (required)
-  notes: HasMany<Notes> (relationship)
-  createdAt: TIMESTAMP
-  updatedAt: TIMESTAMP
-}
-```
-
-### Relationships
-- **Board → Notes:** One-to-Many (HasMany)
-- **Note → Board:** Many-to-One (BelongsTo)
-
-## API Layer
-
-### Routes (routes/notes-route.ts)
-
-| Method | Endpoint | Handler | Description |
-|--------|----------|---------|-------------|
-| GET | `/api/notes` | getAllNotes | Fetch all notes |
-| POST | `/api/notes` | insertNote | Create a note |
-| PUT | `/api/notes/:id` | updateNote | Update note |
-| GET | `/api/notes/board/:boardId` | getAllNotesByBoardId | Notes by board |
-| DELETE | `/api/notes/:id` | deleteNote | Delete note |
-| GET | `/health` | - | Health check |
-
-### Request/Response Format
-
-**Create Note (POST /api/notes)**
-```json
-// Request
-{
-  "content": "New Note",
-  "x": 100,
-  "y": 200,
-  "color": "yellow",
-  "textColor": "black"
-}
-
-// Response
-{
-  "success": true,
-  "note": { ...createdNote }
-}
-```
-
-**Update Note (PUT /api/notes/:id)**
-```json
-// Request (partial update)
-{
-  "content": "Updated content",
-  "x": 150,
-  "y": 250
-}
-
-// Response
-{ ...updatedNote }
-```
-
-## Service Layer
-
-### notes-service.ts
-
-```typescript
-// CRUD Operations:
-insertNote(note) → Creates note with defaults
-getAllNotes() → Returns all notes
-getAllNotesByBoardId(boardId) → Filtered by board
-updateNote(id, updates) → Partial update with returning
-deleteNote(id) → Removes note by ID
-```
-
-### Key Implementation Details
-
-1. **Default Values:** Applied in service layer (color, width, height)
-2. **Returning Clause:** Updates return the modified record
-3. **Error Handling:** Throws errors for not-found scenarios
-
-## Deployment Configuration
-
-### Railway Support
-- `DATABASE_URL` environment variable
-- SSL connections in production
-- Health check endpoint for uptime monitoring
-
-### Scripts
-```json
-"dev": "ts-node-dev --respawn src/index.ts"
-"build": "tsc"
-"start": "node dist/index.js"
-"db:migrate": "npx sequelize-cli db:migrate"
-"db:migrate:undo": "npx sequelize-cli db:migrate:undo"
-```
-
-## Dependencies Summary
-
-### Production
-- express (5.1.0)
-- cors (2.8.5)
-- pg, pg-hstore (PostgreSQL driver)
-- sequelize (6.37.7)
-- sequelize-typescript (2.1.6)
-- dotenv (17.2.3)
-
-### Development
-- typescript (5.9.3)
-- ts-node-dev (2.0.0)
-- @types/express, @types/cors, @types/node

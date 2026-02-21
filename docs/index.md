@@ -25,30 +25,35 @@
 
 ---
 
-## Generated Documentation
+## Documentation
 
 ### Core Documentation
 
 | Document | Description |
 |----------|-------------|
-| [Project Overview](./project-overview.md) | Executive summary, tech stack, features |
-| [Source Tree Analysis](./source-tree-analysis.md) | Complete directory structure with annotations |
+| [Project Overview](./project-overview.md) | Executive summary, tech stack, full feature list |
 | [Development Guide](./development-guide.md) | Setup, scripts, workflow, debugging |
 
 ### Architecture Documentation
 
 | Document | Description |
 |----------|-------------|
-| [Frontend Architecture](./architecture-frontend.md) | React components, hooks, state management |
-| [Backend Architecture](./architecture-backend.md) | Express routes, services, models |
-| [Integration Architecture](./integration-architecture.md) | How parts communicate, data flow |
+| [Frontend Architecture](./architecture-frontend.md) | React components, hooks, services, state management |
+| [Backend Architecture](./architecture-backend.md) | Express routes, services, models, layered architecture |
+| [Integration Architecture](./integration-architecture.md) | How parts communicate, data flow patterns |
 
 ### Technical Specifications
 
 | Document | Description |
 |----------|-------------|
-| [API Contracts](./api-contracts.md) | REST endpoints, request/response schemas |
-| [Data Models](./data-models.md) | Database schema, Sequelize models, relationships |
+| [API Contracts](./api-contracts.md) | All 8 REST route groups, request/response schemas |
+| [Data Models](./data-models.md) | All 6 database tables, Sequelize models, relationships |
+
+### Code Reviews
+
+| Document | Description |
+|----------|-------------|
+| `code-reviews/` | Party-mode code review documents (Epics 3–8) |
 
 ---
 
@@ -92,44 +97,40 @@ When creating a brownfield PRD or planning new features:
 ### Frontend Patterns
 
 - **State Management:** TanStack Query for server state, React state for local UI
-- **Mutations:** Optimistic updates with rollback on error
-- **Components:** Functional with custom hooks for logic extraction
-- **Styling:** Tailwind CSS utilities + custom color mapping
+- **Mutations:** Optimistic updates with rollback on error (`onMutate` / `onError` / `onSettled`)
+- **Components:** Functional with custom hooks for logic extraction (25 components, 10+ hooks)
+- **Styling:** Tailwind CSS utilities + custom colour mapping + CSS variables for themes
 
 ### Backend Patterns
 
 - **Architecture:** Routes → Services → Models (layered)
-- **Database:** Sequelize-TypeScript with decorator-based models
-- **API Style:** RESTful with JSON payloads
-- **Error Handling:** Try/catch with consistent error responses
+- **Database:** Sequelize-TypeScript with decorator-based models (6 tables)
+- **API Style:** RESTful with JSON payloads (8 route groups)
+- **Error Handling:** Try/catch with consistent `{ success, error }` responses
 
 ### Integration Patterns
 
-- **Communication:** HTTP REST over VITE_API_URL
+- **Communication:** HTTP REST over `VITE_API_URL`
 - **CORS:** Configured for localhost + Vercel previews
-- **Data Sync:** TanStack Query cache invalidation
+- **Data Sync:** TanStack Query cache invalidation after mutations
 
 ---
 
 ## Current Features
 
-- Drag & drop notes with Framer Motion
-- 22-color palette for backgrounds and text
-- Infinite canvas with position persistence
-- Auto-save to PostgreSQL backend
-- Z-index layering management
-- Optimistic UI updates
-
-## Planned Features (from README roadmap)
-
-- [ ] User authentication
-- [ ] Multi-board support
-- [ ] Keyboard shortcuts
-- [ ] Mobile/tablet responsive design
-- [ ] Real-time collaboration
-- [ ] Rich text editing
-- [ ] Image attachments
-- [ ] Search and filtering
+- Three card types: Notes, Ideas, Plans
+- Drag & drop with position persistence
+- 22-colour palette (background + text)
+- Infinite canvas with zoom (25%–200%) and pan
+- Multi-board support with sidebar navigation
+- Visual SVG connections between cards
+- Auto-connections via keyword analysis
+- "Next Time" resurfacing with configurable frequency
+- Analytics dashboard (counts, timelines, keywords)
+- Activity log (create/update/delete events)
+- Light / dark / system theme switcher
+- Export as JSON or plain text
+- Optimistic UI updates throughout
 
 ---
 
@@ -137,8 +138,5 @@ When creating a brownfield PRD or planning new features:
 
 | Property | Value |
 |----------|-------|
-| Generated | 2026-01-21 |
-| Scan Level | Deep |
-| Mode | Initial Scan |
+| Last Updated | 2026-02-21 |
 | Parts Documented | 2 (frontend, backend) |
-| Files Generated | 9 |

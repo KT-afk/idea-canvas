@@ -1,322 +1,290 @@
-# API Contracts - Idea Canvas
-
-## Overview
-
-The Idea Canvas backend exposes a REST API for managing notes and boards. All endpoints are prefixed with `/api` and communicate using JSON.
+# API Contracts — Idea Canvas
 
 ## Base Configuration
 
 | Property | Value |
 |----------|-------|
-| Base URL | `http://localhost:3000/api` (development) |
+| Base URL | `http://localhost:3000` (development) |
 | Content-Type | `application/json` |
 | Authentication | None (public API) |
+| All data routes | prefixed `/api` |
 
-## Endpoints
+### Standard Error Response
 
-### Health Check
+```json
+{ "error": { "code": "INTERNAL_ERROR", "message": "Human-readable message" } }
+```
+
+---
+
+## Health Check
 
 ```
 GET /health
 ```
 
-**Description:** Health check endpoint for monitoring and load balancers.
-
-**Response:**
 ```json
-{
-  "status": "ok"
-}
+{ "status": "ok" }
 ```
 
 ---
 
-### Notes API
+## Notes
 
-#### Get All Notes
-
-```
-GET /api/notes
-```
-
-**Description:** Retrieves all notes in the system.
-
-**Response (200 OK):**
-```json
-{
-  "result": [
-    {
-      "id": "uuid-string",
-      "content": "Note content",
-      "x": 100.00,
-      "y": 200.00,
-      "width": 192.00,
-      "height": 96.00,
-      "color": "yellow",
-      "textColor": "black",
-      "boardId": null,
-      "zIndex": 0,
-      "CREATEDAT": "2026-01-21T00:00:00.000Z",
-      "UPDATEDAT": "2026-01-21T00:00:00.000Z"
-    }
-  ]
-}
-```
-
-**Error Response (500):**
-```json
-{
-  "success": false,
-  "error": "Failed to delete note."
-}
-```
-
----
-
-#### Create Note
-
-```
-POST /api/notes
-```
-
-**Description:** Creates a new note with the provided data.
-
-**Request Body:**
-```json
-{
-  "content": "New Note",
-  "x": 100,
-  "y": 200,
-  "width": 192,        // optional, default: 192
-  "height": 96,        // optional, default: 96
-  "color": "yellow",   // optional, default: "yellow"
-  "textColor": "black" // optional, default: "black"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "success": true,
-  "note": {
-    "id": "generated-uuid",
-    "content": "New Note",
-    "x": 100,
-    "y": 200,
-    "width": 192,
-    "height": 96,
-    "color": "yellow",
-    "textColor": "black",
-    "boardId": null,
-    "zIndex": 0,
-    "CREATEDAT": "2026-01-21T00:00:00.000Z",
-    "UPDATEDAT": "2026-01-21T00:00:00.000Z"
-  }
-}
-```
-
-**Error Response (500):**
-```json
-{
-  "success": false,
-  "error": "Failed to insert note."
-}
-```
-
----
-
-#### Update Note
-
-```
-PUT /api/notes/:id
-```
-
-**Description:** Updates an existing note. Supports partial updates.
-
-**Path Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| id | UUID | Note identifier |
-
-**Request Body (all fields optional):**
-```json
-{
-  "content": "Updated content",
-  "x": 150,
-  "y": 250,
-  "width": 200,
-  "height": 100,
-  "color": "blue",
-  "textColor": "white"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "id": "uuid-string",
-  "content": "Updated content",
-  "x": 150,
-  "y": 250,
-  "width": 200,
-  "height": 100,
-  "color": "blue",
-  "textColor": "white",
-  "boardId": null,
-  "zIndex": 0,
-  "CREATEDAT": "2026-01-21T00:00:00.000Z",
-  "UPDATEDAT": "2026-01-21T01:00:00.000Z"
-}
-```
-
-**Error Response (500):**
-```json
-{
-  "success": false,
-  "error": "Failed to update note."
-}
-```
-
----
-
-#### Get Notes by Board
-
+### Get notes by board
 ```
 GET /api/notes/board/:boardId
 ```
-
-**Description:** Retrieves all notes belonging to a specific board.
-
-**Path Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| boardId | UUID | Board identifier |
-
-**Response (200 OK):**
+Response `200`:
 ```json
-[
-  {
-    "id": "uuid-string",
-    "content": "Board note",
-    "x": 100,
-    "y": 200,
-    "boardId": "board-uuid",
-    ...
-  }
-]
+[{ "id": "uuid", "content": "...", "type": "note|idea|plan", "status": "active|archived|graduated",
+   "positionX": 100, "positionY": 200, "backgroundColor": "yellow", "textColor": "black",
+   "boardId": "uuid", "zIndex": 0, "createdAt": "...", "updatedAt": "..." }]
 ```
 
-**Error Response (500):**
-```json
-{
-  "error": "Failed to fetch notes."
-}
+### Create note
 ```
+POST /api/notes
+```
+Body:
+```json
+{ "content": "...", "positionX": 100, "positionY": 200, "backgroundColor": "yellow",
+  "textColor": "black", "boardId": "uuid", "type": "note" }
+```
+Response `200`: `{ "success": true, "note": { ...note } }`
 
----
+### Update note
+```
+PUT /api/notes/:id
+```
+Body (all fields optional — partial update):
+```json
+{ "content": "...", "positionX": 150, "positionY": 250, "type": "idea",
+  "status": "archived", "backgroundColor": "blue", "zIndex": 5 }
+```
+Response `200`: `{ ...updatedNote }`
 
-#### Delete Note
-
+### Delete note
 ```
 DELETE /api/notes/:id
 ```
+Response `200`: `{ "success": true }`
 
-**Description:** Permanently deletes a note.
+---
 
-**Path Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| id | UUID | Note identifier |
+## Boards
 
-**Response (200 OK):**
+### List boards
+```
+GET /api/boards
+```
+Response `200`: `[{ "id": "uuid", "name": "Board name", "createdAt": "...", "updatedAt": "..." }]`
+
+### Create board
+```
+POST /api/boards
+```
+Body: `{ "name": "My Board" }`
+Response `200`: `{ "success": true, "board": { ...board } }`
+
+### Update board
+```
+PUT /api/boards/:id
+```
+Body: `{ "name": "New name" }`
+Response `200`: `{ ...updatedBoard }`
+
+### Delete board
+```
+DELETE /api/boards/:id
+```
+Response `200`: `{ "success": true }`
+
+---
+
+## Connections
+
+### Create connection
+```
+POST /api/boards/:boardId/connections
+```
+Body:
 ```json
-{
-  "success": true
-}
+{ "sourceCardId": "uuid", "targetCardId": "uuid", "label": "related",
+  "confidence": 0.85, "reason": "shared keywords: planning, goals",
+  "isAutoGenerated": false }
+```
+Response `200`: `{ "success": true, "connection": { ...connection } }`
+
+### Get connections for a board
+```
+GET /api/boards/:boardId/connections
+```
+Response `200`: `[{ "id": "uuid", "sourceCardId": "uuid", "targetCardId": "uuid",
+  "boardId": "uuid", "label": null, "confidence": 0.85, "reason": "...",
+  "isAutoGenerated": true, "sourceCard": { ...note }, "targetCard": { ...note } }]`
+
+### Get connections for a card
+```
+GET /api/cards/:cardId/connections
+```
+Response `200`: same shape as board connections, filtered to the card.
+
+### Delete connection
+```
+DELETE /api/connections/:id
+```
+Response `200`: `{ "success": true }`
+
+### Get connection suggestions (board)
+```
+GET /api/boards/:boardId/connection-suggestions
+```
+Response `200`:
+```json
+[{ "sourceCardId": "uuid", "targetCardId": "uuid", "confidence": 0.75,
+   "reason": "shared keywords: canvas, drag", "sourceCard": { ...note }, "targetCard": { ...note } }]
 ```
 
-**Error Response (500):**
+### Get connection suggestions (card)
+```
+GET /api/cards/:cardId/connection-suggestions
+```
+Response `200`: same shape, filtered to suggestions involving the card.
+
+---
+
+## User Preferences
+
+### Get preferences
+```
+GET /api/preferences?userId=default-user
+```
+Response `200`:
 ```json
-{
-  "success": false,
-  "error": "Failed to delete note."
-}
+{ "data": { "id": "uuid", "userId": "default-user", "defaultBoardId": null,
+    "resurfaceFrequency": "normal", "theme": "theme-purple-workshop",
+    "canvasColor": "#1C1625", "lastZoom": 1 } }
+```
+
+### Update preferences
+```
+PUT /api/preferences
+```
+Body (any subset of writable fields):
+```json
+{ "userId": "default-user", "theme": "theme-warm-purple", "resurfaceFrequency": "frequent" }
+```
+Response `200`: `{ "data": { ...updatedPreferences } }`
+
+### Set default board
+```
+PUT /api/preferences/default-board
+```
+Body: `{ "userId": "default-user", "boardId": "uuid" }`
+Response `200`: `{ "data": { ...updatedPreferences } }`
+
+---
+
+## Analytics
+
+### Get lifecycle analytics
+```
+GET /api/analytics
+```
+Response `200`:
+```json
+{ "data": {
+    "totalItems": 42,
+    "totalNotes": 10,
+    "totalIdeas": 25,
+    "totalPlans": 7,
+    "activeIdeas": 18,
+    "archivedIdeas": 5,
+    "graduatedIdeas": 2,
+    "activePlans": 6,
+    "totalArchivedAll": 8,
+    "graduationEvents": 2,
+    "totalConnections": 15,
+    "resurfaceEvents": 9,
+    "actedOnCount": 4
+} }
 ```
 
 ---
 
-## Data Types
+## Activity Log
 
-### Note Object
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| id | UUID | Auto | Generated | Unique identifier |
-| content | string | Yes | - | Note text content |
-| x | decimal(10,2) | Yes | - | X coordinate |
-| y | decimal(10,2) | Yes | - | Y coordinate |
-| width | decimal(5,2) | No | 192 | Note width in pixels |
-| height | decimal(5,2) | No | 96 | Note height in pixels |
-| color | string | No | "yellow" | Background color name |
-| textColor | string | No | "black" | Text color name |
-| boardId | UUID | No | null | Parent board ID |
-| zIndex | integer | No | 0 | Layer ordering |
-| CREATEDAT | timestamp | Auto | Now | Creation timestamp |
-| UPDATEDAT | timestamp | Auto | Now | Last update timestamp |
-
-### Available Colors
-
-Background and text colors can be any of:
-- `yellow`, `red`, `blue`, `green`, `purple`, `orange`, `pink`
-- `teal`, `indigo`, `lime`, `rose`, `cyan`, `amber`, `emerald`
-- `violet`, `fuchsia`, `classicRed`, `classicBlue`, `classicGreen`
-- `white`, `black`, `gray`
-
----
-
-## Error Handling
-
-All endpoints return appropriate HTTP status codes:
-
-| Status | Meaning |
-|--------|---------|
-| 200 | Success |
-| 500 | Internal Server Error |
-
-Error responses include:
+### Get activity for a note
+```
+GET /api/notes/:noteId/activity
+```
+Response `200`:
 ```json
-{
-  "success": false,
-  "error": "Human-readable error message"
-}
+{ "data": [
+    { "id": "uuid", "noteId": "uuid", "eventType": "graduated",
+      "payload": { "from": "idea", "to": "plan" }, "createdAt": "..." }
+] }
 ```
 
+Event types: `created`, `edited`, `type_changed`, `status_changed`, `connected`, `resurfaced`, `next_time_added`, `next_time_completed`, `graduated`.
+
 ---
 
-## CORS Configuration
+## Next-Time Notes
 
-The API accepts requests from:
-- `http://localhost:5173` (Vite dev server)
-- `http://localhost:3000` (Local backend)
+### List next-time notes for a card
+```
+GET /api/notes/:noteId/next-time-notes
+```
+Response `200`: `{ "data": [{ "id": "uuid", "parentNoteId": "uuid", "content": "...", "completedAt": null, "createdAt": "..." }] }`
+
+### Add next-time note
+```
+POST /api/notes/:noteId/next-time-notes
+```
+Body: `{ "content": "Remember to follow up" }`
+Response `200`: `{ "data": { ...nextTimeNote } }`
+
+### Complete next-time note
+```
+PATCH /api/next-time-notes/:id/complete
+```
+Response `200`: `{ "data": { ...completedNote } }`
+
+### Delete next-time note
+```
+DELETE /api/next-time-notes/:id
+```
+Response `200`: `{ "success": true }`
+
+---
+
+## Resurfacing
+
+### Get a forgotten idea to resurface
+```
+GET /api/ideas/resurface?frequency=normal
+```
+`frequency`: `normal` | `frequent` | `rare` | `off`
+
+Response `200`: `{ "data": { ...note } }`
+Response `204`: No content — no qualifying ideas found.
+
+### Mark resurface as acted on
+```
+PATCH /api/ideas/:noteId/resurface-acted
+```
+Response `200`: `{ "data": { ...updatedNote } }`
+
+---
+
+## CORS
+
+Accepted origins:
+- `http://localhost:5173` (Vite dev)
+- `http://localhost:3000`
 - `FRONTEND_URL` environment variable
-- Any `*.vercel.app` domain (preview deployments)
+- `*.vercel.app` (preview deployments)
 
-Credentials are allowed via `credentials: true`.
-
----
-
-## Frontend Client Usage
-
-The frontend uses a service layer (`notesService.ts`) that wraps these endpoints:
-
-```typescript
-// Base URL from environment
-const API_URL = import.meta.env.VITE_API_URL || "";
-
-// Available functions:
-fetchNotes()           // GET /api/notes
-createNote(note)       // POST /api/notes
-updateNote(id, payload) // PUT /api/notes/:id
-deleteNote(id)         // DELETE /api/notes/:id
-fetchNotesByBoard(id)  // GET /api/notes/board/:id
-```
+Credentials: enabled.

@@ -165,31 +165,67 @@ VITE_API_URL=https://your-backend.railway.app
 
 ### Manual Testing
 
-1. **Create Note:** Click the `+` button
-2. **Edit Note:** Click in the textarea and type
-3. **Move Note:** Drag from the top handle area
-4. **Change Color:** Click paint bucket icon
-5. **Change Text Color:** Click text icon
-6. **Delete Note:** Click the X button
+**Cards**
+1. **Create card:** Click the `+` button in the toolbar; choose Note, Idea, or Plan
+2. **Edit card:** Click in the textarea and type
+3. **Move card:** Drag from the top handle bar
+4. **Change background colour:** Click the paint bucket icon
+5. **Change text colour:** Click the text/font icon
+6. **Delete card:** Click the × button
+
+**Boards**
+7. **Create board:** Click `+` next to "Boards" in the sidebar
+8. **Switch board:** Click a board name in the sidebar
+9. **Rename / delete board:** Use the board context menu
+
+**Connections**
+10. **Draw connection:** Enter connection mode (toolbar), drag from one card to another
+11. **Delete connection:** Click a connection line to select, then press Delete
+
+**Resurfacing**
+12. **Queue card:** Click the clock icon on a card to mark it "next time"
+13. **Resurface modal:** Appears on next app load when due cards exist
+
+**Insights**
+14. **Open dashboard:** Click the chart icon in the toolbar
+15. **Check analytics:** Review card counts, connection counts, activity timeline, keywords
+
+**Themes**
+16. **Switch theme:** Click the theme icon in the toolbar → select Light / Dark / System
+
+**Export**
+17. **Export data:** Click the export icon → choose JSON or plain text
 
 ### API Testing
 
 ```bash
-# Get all notes
-curl http://localhost:3000/api/notes
+# Get all notes for a board
+curl "http://localhost:3000/api/notes/board/{boardId}"
 
-# Create a note
+# Create a card
 curl -X POST http://localhost:3000/api/notes \
   -H "Content-Type: application/json" \
-  -d '{"content":"Test","x":100,"y":100}'
+  -d '{"type":"note","content":"Test","x":100,"y":100,"boardId":"{boardId}"}'
 
-# Update a note
+# Update a card
 curl -X PUT http://localhost:3000/api/notes/{id} \
   -H "Content-Type: application/json" \
   -d '{"content":"Updated"}'
 
-# Delete a note
+# Delete a card
 curl -X DELETE http://localhost:3000/api/notes/{id}
+
+# List boards
+curl http://localhost:3000/api/boards
+
+# Get connections for a board
+curl "http://localhost:3000/api/connections?boardId={boardId}"
+
+# Get analytics for a board
+curl "http://localhost:3000/api/analytics?boardId={boardId}"
+
+# Get user preferences
+curl "http://localhost:3000/api/preferences?userId={userId}"
 ```
 
 ## Debugging
@@ -257,17 +293,25 @@ npm run build
 
 ```
 idea-canvas/
-├── frontend/           # React SPA
-│   ├── src/           # Source code
-│   ├── dist/          # Production build
-│   └── package.json   # Dependencies
+├── frontend/                  # React SPA
+│   ├── src/
+│   │   ├── components/        # 25 UI components (Card, Board, Canvas, ...)
+│   │   ├── hooks/             # 10+ custom hooks (useNotes, useBoards, ...)
+│   │   ├── services/          # 7 API service modules
+│   │   ├── App.tsx            # Root canvas component
+│   │   └── main.tsx           # Vite entry point
+│   └── package.json
 │
-├── backend/           # Express API
-│   ├── src/           # Source code
-│   ├── dist/          # Compiled JS
-│   └── package.json   # Dependencies
+├── backend/                   # Express REST API
+│   ├── src/
+│   │   ├── models/            # 6 Sequelize models (NOTES, BOARDS, ...)
+│   │   ├── routes/            # 8 route files (notes, boards, connections, ...)
+│   │   ├── services/          # 7 service modules (business logic)
+│   │   ├── config/            # DB connection (db.ts)
+│   │   └── index.ts           # Express entry point
+│   └── package.json
 │
-└── docs/              # Documentation
+└── docs/                      # Architecture & API documentation
 ```
 
 ## Getting Help

@@ -1,279 +1,185 @@
-# Data Models - Idea Canvas
+# Data Models — Idea Canvas
 
 ## Overview
 
-Idea Canvas uses PostgreSQL with Sequelize ORM and sequelize-typescript decorators. The database schema consists of two main tables: NOTES and BOARDS with a one-to-many relationship.
+Idea Canvas uses PostgreSQL with Sequelize ORM and sequelize-typescript decorators. All column names are stored in UPPER_CASE; Sequelize maps them to camelCase in the application layer.
+
+All tables use `sequelize.sync({ alter: true })` on startup (development). For production, use explicit migration files.
+
+---
 
 ## Entity Relationship Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                              BOARDS                                  │
-├─────────────────────────────────────────────────────────────────────┤
-│ ID (UUID, PK)                                                        │
-│ NAME (TEXT)                                                          │
-│ CREATEDAT (TIMESTAMP)                                                │
-│ UPDATEDAT (TIMESTAMP)                                                │
-└─────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    │ 1:N
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                              NOTES                                   │
-├─────────────────────────────────────────────────────────────────────┤
-│ ID (UUID, PK)                                                        │
-│ CONTENT (TEXT)                                                       │
-│ X (DECIMAL 10,2)                                                     │
-│ Y (DECIMAL 10,2)                                                     │
-│ WIDTH (DECIMAL 5,2)                                                  │
-│ HEIGHT (DECIMAL 5,2)                                                 │
-│ BOARDID (UUID, FK → BOARDS.ID)                                       │
-│ ZINDEX (INTEGER)                                                     │
-│ COLOR (VARCHAR)                                                      │
-│ TEXTCOLOR (VARCHAR)                                                  │
-│ CREATEDAT (TIMESTAMP)                                                │
-│ UPDATEDAT (TIMESTAMP)                                                │
-└─────────────────────────────────────────────────────────────────────┘
+BOARDS ─────────────────────────────────────────────────────────────┐
+  │ 1:N                                                              │
+  ▼                                                                  │
+NOTES ──── 1:N ──► CONNECTIONS (sourceCardId / targetCardId)        │
+  │                              │ N:1 ──────────────────────────────┘
+  │ 1:N                          (boardId FK)
+  ▼
+ACTIVITY_LOG (append-only event timeline)
+
+NOTES ── 1:N ──► NEXT_TIME_NOTES (parentNoteId)
+
+USER_PREFERENCES ── N:1 ──► BOARDS (defaultBoardId)
 ```
+
+---
 
 ## Table Definitions
 
-### NOTES Table
+### NOTES
 
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| ID | UUID | PRIMARY KEY | UUIDV4 | Unique identifier |
-| CONTENT | TEXT | NOT NULL | - | Note text content |
-| X | DECIMAL(10,2) | NOT NULL | - | X position coordinate |
-| Y | DECIMAL(10,2) | NOT NULL | - | Y position coordinate |
-| WIDTH | DECIMAL(5,2) | NOT NULL | 192 | Note width in pixels |
-| HEIGHT | DECIMAL(5,2) | NOT NULL | 96 | Note height in pixels |
-| BOARDID | UUID | FK (BOARDS.ID) | NULL | Parent board reference |
-| ZINDEX | INTEGER | NOT NULL | 0 | Layer ordering |
-| COLOR | VARCHAR(255) | NOT NULL | 'yellow' | Background color |
-| TEXTCOLOR | VARCHAR(255) | NOT NULL | 'black' | Text color |
-| CREATEDAT | TIMESTAMP | NOT NULL | NOW | Creation timestamp |
-| UPDATEDAT | TIMESTAMP | NOT NULL | NOW | Last modification |
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| ID | UUID PK | UUIDV4 | |
+| TITLE | VARCHAR | null | Optional title (future use) |
+| CONTENT | TEXT | — | Required |
+| TYPE | ENUM | `'note'` | `'note'` \| `'idea'` \| `'plan'` |
+| STATUS | ENUM | `'active'` | `'active'` \| `'archived'` \| `'graduated'` |
+| POSITIONX | DECIMAL(10,2) | — | Canvas X coordinate |
+| POSITIONY | DECIMAL(10,2) | — | Canvas Y coordinate |
+| BACKGROUNDCOLOR | VARCHAR | `'yellow'` | Color name (mapped to hex in frontend) |
+| TEXTCOLOR | VARCHAR | `'black'` | Color name |
+| BOARDID | UUID FK | null | → BOARDS.ID |
+| USERID | UUID | null | Placeholder until auth is implemented |
+| ZINDEX | INTEGER | 0 | Layer ordering |
+| ARCHIVEDAT | TIMESTAMP | null | Set when status → `'archived'` |
+| METADATA | JSONB | null | Free-form metadata (future use) |
+| LASTVIEWEDAT | TIMESTAMP | null | Updated on canvas focus; used by resurfacing |
+| LASTRESURFACEDAT | TIMESTAMP | null | Last time a resurface toast fired for this note |
+| RESURFACECOUNT | INTEGER | 0 | Total number of times resurfaced |
+| ACTEDONRESURFACE | BOOLEAN | false | Whether user acted on the last resurface |
+| CREATEDAT | TIMESTAMP | NOW | |
+| UPDATEDAT | TIMESTAMP | NOW | |
 
-**Indexes:**
-- Primary Key on ID
-- Foreign Key on BOARDID → BOARDS.ID
+### BOARDS
 
-### BOARDS Table
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| ID | UUID PK | UUIDV4 | |
+| NAME | TEXT | — | Required |
+| USERID | UUID | null | Placeholder until auth is implemented |
+| LASTOPENDAT | TIMESTAMP | null | Last time this board was opened |
+| CREATEDAT | TIMESTAMP | NOW | |
+| UPDATEDAT | TIMESTAMP | NOW | |
 
-| Column | Type | Constraints | Default | Description |
-|--------|------|-------------|---------|-------------|
-| ID | UUID | PRIMARY KEY | UUIDV4 | Unique identifier |
-| NAME | TEXT | NOT NULL | - | Board name |
-| CREATEDAT | TIMESTAMP | NOT NULL | NOW | Creation timestamp |
-| UPDATEDAT | TIMESTAMP | NOT NULL | NOW | Last modification |
+### CONNECTIONS
 
-**Indexes:**
-- Primary Key on ID
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| ID | UUID PK | UUIDV4 | |
+| SOURCECARDID | UUID FK | — | → NOTES.ID (CASCADE DELETE) |
+| TARGETCARDID | UUID FK | — | → NOTES.ID (CASCADE DELETE) |
+| BOARDID | UUID FK | — | → BOARDS.ID (CASCADE DELETE) |
+| LABEL | VARCHAR | null | Optional user-set label |
+| CONFIDENCE | FLOAT | null | 0.0–1.0; set for auto-generated connections |
+| REASON | TEXT | null | Human-readable suggestion reason |
+| ISAUTOGENERATED | BOOLEAN | false | Whether created by the auto-connection engine |
+| CREATEDAT | TIMESTAMP | NOW | |
+| UPDATEDAT | TIMESTAMP | NOW | |
 
-## Sequelize Model Definitions
+### ACTIVITY_LOG
 
-### Notes Model (`backend/src/models/NOTES.ts`)
+Append-only. No `updatedAt` column.
 
-```typescript
-@Table({
-  tableName: "NOTES",
-  timestamps: true,
-  createdAt: "CREATEDAT",
-  updatedAt: "UPDATEDAT",
-})
-export default class Notes extends Model<InferAttributes<Notes>> {
-  @Column({
-    type: DataType.UUID,
-    defaultValue: DataType.UUIDV4,
-    primaryKey: true,
-    field: "ID",
-  })
-  declare id: CreationOptional<string>;
+| Column | Type | Notes |
+|--------|------|-------|
+| ID | UUID PK | UUIDV4 |
+| NOTEID | UUID FK | → NOTES.ID (CASCADE DELETE) |
+| EVENTTYPE | VARCHAR | `created` \| `edited` \| `type_changed` \| `status_changed` \| `connected` \| `resurfaced` \| `next_time_added` \| `next_time_completed` \| `graduated` |
+| PAYLOAD | JSONB | Optional context, e.g. `{ from: 'note', to: 'idea' }` |
+| CREATEDAT | TIMESTAMP | Event timestamp |
 
-  @Column({
-    type: DataType.TEXT,
-    allowNull: false,
-    field: "CONTENT",
-  })
-  declare content: string;
+### NEXT_TIME_NOTES
 
-  @Column({
-    type: DataType.DECIMAL(10, 2),
-    allowNull: false,
-    field: "X",
-  })
-  declare x: number;
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| ID | UUID PK | UUIDV4 | |
+| PARENTNOTEID | UUID FK | — | → NOTES.ID (CASCADE DELETE) |
+| CONTENT | TEXT | — | Required |
+| COMPLETEDAT | TIMESTAMP | null | Null = incomplete |
+| CREATEDAT | TIMESTAMP | NOW | |
+| UPDATEDAT | TIMESTAMP | NOW | |
 
-  @Column({
-    type: DataType.DECIMAL(10, 2),
-    allowNull: false,
-    field: "Y",
-  })
-  declare y: number;
+### USER_PREFERENCES
 
-  @Column({
-    type: DataType.DECIMAL(5, 2),
-    allowNull: false,
-    field: "WIDTH",
-    defaultValue: 192,
-  })
-  declare width: number;
+One row per user (upsert by `userId`).
 
-  @Column({
-    type: DataType.DECIMAL(5, 2),
-    allowNull: false,
-    field: "HEIGHT",
-    defaultValue: 96,
-  })
-  declare height: number;
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| ID | UUID PK | UUIDV4 | |
+| USERID | VARCHAR(255) | `'default-user'` | Placeholder until auth is implemented |
+| DEFAULTBOARDID | UUID FK | null | → BOARDS.ID |
+| RESURFACEFREQUENCY | VARCHAR(15) | `'normal'` | `'normal'` \| `'frequent'` \| `'rare'` \| `'off'` |
+| THEME | VARCHAR(30) | `'warm-purple'` | CSS theme class name |
+| CANVASCOLOR | VARCHAR(30) | `'charcoal'` | Canvas background color |
+| LASTZOOM | DECIMAL(3,2) | 1.00 | Persisted zoom level |
+| CREATEDAT | TIMESTAMP | NOW | |
+| UPDATEDAT | TIMESTAMP | NOW | |
 
-  @Column({
-    type: DataType.UUID,
-    allowNull: true,
-    field: "BOARDID",
-  })
-  declare boardId: string;
-
-  @BelongsTo(() => Boards, { foreignKey: "boardId" })
-  declare board?: CreationOptional<Boards>;
-
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    defaultValue: 0,
-    field: "ZINDEX",
-  })
-  declare zIndex: number;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: false,
-    defaultValue: "yellow",
-    field: "COLOR",
-  })
-  declare color: string;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: false,
-    defaultValue: "black",
-    field: "TEXTCOLOR",
-  })
-  declare textColor: string;
-}
-```
-
-### Boards Model (`backend/src/models/BOARDS.ts`)
-
-```typescript
-@Table({
-  tableName: "BOARDS",
-  timestamps: true,
-  createdAt: "CREATEDAT",
-  updatedAt: "UPDATEDAT",
-})
-export default class Boards extends Model<InferAttributes<Boards>> {
-  @Column({
-    type: DataType.UUID,
-    defaultValue: DataType.UUIDV4,
-    primaryKey: true,
-    field: "ID",
-  })
-  declare id: CreationOptional<string>;
-
-  @Column({
-    type: DataType.TEXT,
-    allowNull: false,
-    defaultValue: null,
-    field: "NAME",
-  })
-  declare name: string;
-
-  @HasMany(() => NOTES, {
-    foreignKey: "boardId",
-    sourceKey: "id",
-    constraints: false,
-  })
-  declare notes?: CreationOptional<NOTES[]>;
-}
-```
+---
 
 ## Relationships
 
-### Board → Notes (One-to-Many)
+| Relationship | Type | Notes |
+|---|---|---|
+| BOARDS → NOTES | One-to-Many | `boardId` on NOTES, no DB-level constraint |
+| NOTES → CONNECTIONS (source) | One-to-Many | CASCADE DELETE |
+| NOTES → CONNECTIONS (target) | One-to-Many | CASCADE DELETE |
+| BOARDS → CONNECTIONS | One-to-Many | CASCADE DELETE |
+| NOTES → ACTIVITY_LOG | One-to-Many | CASCADE DELETE |
+| NOTES → NEXT_TIME_NOTES | One-to-Many | CASCADE DELETE |
+| BOARDS → USER_PREFERENCES | Many-to-One | via `defaultBoardId` |
+
+---
+
+## Frontend TypeScript Types
 
 ```typescript
-// In Boards model
-@HasMany(() => NOTES, {
-  foreignKey: "boardId",
-  sourceKey: "id",
-  constraints: false,  // No database-level constraints
-})
-declare notes?: CreationOptional<NOTES[]>;
-```
-
-### Note → Board (Many-to-One)
-
-```typescript
-// In Notes model
-@BelongsTo(() => Boards, {
-  foreignKey: "boardId",
-})
-declare board?: CreationOptional<Boards>;
-```
-
-**Note:** The relationship has `constraints: false` meaning the foreign key is not enforced at the database level. This allows notes to exist without a board (`boardId: null`).
-
-## TypeScript Type Definition
-
-### Frontend Type (`frontend/src/types/types.ts`)
-
-```typescript
-export type Note = {
-  id: string;
-  content: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  color: string;
-  textColor: string;
-  boardId?: string;
-  createdAt?: string;
-  updatedAt?: string;
+// frontend/src/types/types.ts
+type Note = {
+  id: string; content: string; type?: 'note' | 'idea' | 'plan';
+  status?: 'active' | 'archived' | 'graduated';
+  positionX: number; positionY: number;
+  backgroundColor: string; textColor: string;
+  boardId?: string | null; userId?: string | null;
+  zIndex?: number; archivedAt?: string | null;
+  lastViewedAt?: string | null; lastResurfacedAt?: string | null;
+  resurfaceCount?: number; actedOnResurface?: boolean;
+  createdAt?: string; updatedAt?: string;
 };
+
+type Board = { id: string; name: string; userId?: string | null;
+  lastOpenedAt?: string | null; createdAt?: string; updatedAt?: string; };
+
+type Connection = { id: string; sourceCardId: string; targetCardId: string;
+  boardId: string; label?: string | null; confidence?: number | null;
+  reason?: string | null; isAutoGenerated?: boolean;
+  sourceCard?: Note; targetCard?: Note; createdAt?: string; updatedAt?: string; };
+
+type ActivityLogEntry = { id: string; noteId: string;
+  eventType: ActivityEventType; payload?: Record<string, unknown> | null;
+  createdAt: string; };
+
+type NextTimeNote = { id: string; parentNoteId: string; content: string;
+  completedAt?: string | null; createdAt?: string; };
+
+// frontend/src/types/preference.types.ts
+interface UserPreferences { id: string; userId: string; defaultBoardId: string | null;
+  resurfaceFrequency: string; theme: string; canvasColor: string; lastZoom: number; }
 ```
 
-## Data Precision
+---
 
-### Coordinate System
+## Color System
 
-- **X, Y coordinates:** `DECIMAL(10,2)` supports values up to 99,999,999.99
-- **Width, Height:** `DECIMAL(5,2)` supports values up to 999.99
-- This enables very large canvas sizes for the infinite canvas feature
+`backgroundColor` and `textColor` are stored as color name strings (e.g. `"yellow"`, `"classicBlue"`). The frontend `getColorClass()` utility in `src/utilities/utils.ts` maps these to hex values at render time. 22 colors are supported.
 
-### Why DECIMAL instead of FLOAT?
+---
 
-DECIMAL provides exact precision for pixel coordinates, avoiding floating-point rounding errors that could cause visual jitter during drag operations.
+## Coordinate Precision
 
-## Database Migrations
-
-Migrations are managed via Sequelize CLI:
-
-```bash
-# Run migrations
-npm run db:migrate
-
-# Undo last migration
-npm run db:migrate:undo
-```
-
-Migration files location: `backend/src/migrations/`
-
-## Sync Strategy
-
-The application uses `sequelize.sync({ alter: true })` on startup:
-- Automatically creates tables if they don't exist
-- Alters existing tables to match model definitions
-- Safe for development; consider explicit migrations for production
+- `POSITIONX` / `POSITIONY`: `DECIMAL(10,2)` — supports up to 99,999,999.99 (sufficient for any infinite canvas offset)
+- `DECIMAL` over `FLOAT` avoids floating-point rounding that could cause visual jitter

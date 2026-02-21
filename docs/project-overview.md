@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Idea Canvas is a modern, interactive sticky note application built with a React frontend and Express backend. It provides a beautiful infinite canvas where users can create, organize, and manage colorful, draggable notes with real-time persistence.
+Idea Canvas is a full-stack productivity application built with React and Express. It provides an infinite canvas where users can create and organise **Notes**, **Ideas**, and **Plans** as draggable cards, connect related cards visually, surface forgotten cards on a schedule, and analyse their thinking through an insights dashboard — all with real-time persistence, multi-board support, and a theming system.
 
 ## Project Classification
 
@@ -48,12 +48,36 @@ Idea Canvas is a modern, interactive sticky note application built with a React 
 
 ## Core Features
 
-1. **Drag & Drop Notes** - Smooth dragging with Framer Motion animations
-2. **Rich Color Palette** - 22 vibrant colors for backgrounds and text
-3. **Infinite Canvas** - Unlimited space for organizing ideas
-4. **Auto-Save** - All changes automatically sync to backend
-5. **Layering System** - Notes come to front when clicked/dragged
-6. **Optimistic Updates** - Immediate UI feedback with rollback on errors
+### Canvas & Cards
+1. **Three Card Types** — Notes, Ideas, and Plans; each with distinct styling and behaviour
+2. **Drag & Drop** — Smooth dragging with Framer Motion; position persisted to PostgreSQL
+3. **Rich Color Palette** — 22 vibrant background and text colour options per card
+4. **Infinite Canvas** — Unlimited space with zoom (25%–200%) and pan controls
+5. **Layering System** — Cards come to front on click/drag; z-index managed server-side
+6. **Optimistic Updates** — Immediate UI feedback with automatic rollback on errors
+
+### Boards
+7. **Multi-Board Support** — Create and switch between named boards; cards are board-scoped
+8. **Board Management** — Rename and delete boards via the sidebar
+
+### Connections
+9. **Visual Connections** — Draw SVG bezier-curve connections between cards to show relationships
+10. **Auto-Connections** — Backend service auto-links semantically related cards by keyword analysis
+
+### Resurfacing
+11. **"Next Time" Notes** — Tag a card to resurface automatically at the next app open
+12. **Configurable Frequency** — User preference controls how often forgotten cards are resurfaced
+
+### Insights
+13. **Analytics Dashboard** — Card counts by type, connection counts, activity timeline, top keywords
+14. **Activity Log** — Server-side event log (create, update, delete) with timestamps
+
+### Personalisation
+15. **Theme System** — Light, dark, and system themes; preference persisted per user
+16. **User Preferences** — Resurface frequency and theme stored in `USER_PREFERENCES` table
+
+### Export
+17. **Export Menu** — Download canvas content as JSON or plain text
 
 ## Architecture Pattern
 
@@ -64,10 +88,12 @@ Idea Canvas is a modern, interactive sticky note application built with a React 
 
 ## Key Design Decisions
 
-1. **Framer Motion for Drag Controls** - Precise control over draggable regions
-2. **TanStack Query for Server State** - Automatic caching, sync, and optimistic updates
-3. **Sequelize-TypeScript** - Type-safe ORM with decorator-based models
-4. **DECIMAL columns for coordinates** - High precision positioning (up to 99,999,999.99)
+1. **Framer Motion for Drag Controls** — Precise control over draggable regions; `dragControls` scoped to handle element
+2. **TanStack Query for Server State** — Automatic caching, sync, and optimistic updates across all 8 route groups
+3. **Sequelize-TypeScript** — Type-safe ORM with decorator-based models across 6 tables
+4. **DECIMAL columns for coordinates** — High precision positioning (up to 99,999,999.99)
+5. **SVG-based Connections** — Bezier curves computed from card centre-points; no external graph library
+6. **Keyword-cache in Auto-Connection Service** — In-memory cache avoids re-fetching all cards on every connect call
 
 ## Documentation Index
 
@@ -75,7 +101,6 @@ Idea Canvas is a modern, interactive sticky note application built with a React 
 - [Backend Architecture](./architecture-backend.md)
 - [API Contracts](./api-contracts.md)
 - [Data Models](./data-models.md)
-- [Source Tree Analysis](./source-tree-analysis.md)
 - [Development Guide](./development-guide.md)
 - [Integration Architecture](./integration-architecture.md)
 
