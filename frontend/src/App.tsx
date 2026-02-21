@@ -96,28 +96,32 @@ function App() {
     }
 
     if (boards.length > 0 && !currentBoardId) {
+      // Only consider boards with a real server UUID (not optimistic temp IDs)
+      const realBoards = boards.filter(b => !b.id.startsWith('temp-'));
+      if (realBoards.length === 0) return;
+
       // Try to use preferred default board (if available)
       if (preferences?.defaultBoardId) {
-        const defaultBoardExists = boards.some(b => b.id === preferences.defaultBoardId);
+        const defaultBoardExists = realBoards.some(b => b.id === preferences.defaultBoardId);
         if (defaultBoardExists) {
           setCurrentBoardId(preferences.defaultBoardId);
           return;
         }
       }
-      
-      // Fallback to first board (don't wait for preferences to load)
-      setCurrentBoardId(boards[0].id);
+
+      // Fallback to first real board
+      setCurrentBoardId(realBoards[0].id);
     }
   }, [boards, currentBoardId, preferences, createBoard]);
 
   // Story 3.3: Auto-switch to fallback board if current board is deleted
   useEffect(() => {
     if (currentBoardId && boards.length > 0) {
-      const currentBoardExists = boards.some((b) => b.id === currentBoardId);
-      if (!currentBoardExists) {
+      const realBoards = boards.filter(b => !b.id.startsWith('temp-'));
+      const currentBoardExists = realBoards.some((b) => b.id === currentBoardId);
+      if (!currentBoardExists && realBoards.length > 0) {
         // Current board was deleted, switch to first board alphabetically
-        // Use [...boards] to avoid mutating the original array
-        const fallbackBoard = [...boards].sort((a, b) => a.name.localeCompare(b.name))[0];
+        const fallbackBoard = [...realBoards].sort((a, b) => a.name.localeCompare(b.name))[0];
         setCurrentBoardId(fallbackBoard.id);
       }
     }
