@@ -104,7 +104,7 @@ function EmptyInsights() {
 export function InsightsDashboard({ open, onOpenChange }: InsightsDashboardProps) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['analytics'],
-    queryFn: fetchAnalytics,
+    queryFn: ({ signal }) => fetchAnalytics(signal),
     enabled: open, // Only fetch when dashboard is open
     staleTime: 0, // Always refetch when reopened
     refetchOnMount: 'always',

@@ -15,7 +15,7 @@ interface NextTimeNotesProps {
   textColor?: string;
 }
 
-export function NextTimeNotes({ parentNoteId, textColor }: NextTimeNotesProps) {
+export function NextTimeNotes({ parentNoteId, textColor: _textColor }: NextTimeNotesProps) {
   const { notes, addNote, completeNote, removeNote } = useNextTimeNotes(parentNoteId);
   const [inputValue, setInputValue] = useState('');
   const [isAdding, setIsAdding] = useState(false);
