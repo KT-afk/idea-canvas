@@ -1,4 +1,4 @@
-import { CreationOptional, InferAttributes } from "sequelize";
+import { CreationOptional, InferAttributes, InferCreationAttributes, Sequelize } from "sequelize";
 import { Column, DataType, HasMany, Model, Table } from "sequelize-typescript";
 import NOTES from "./NOTES";
 
@@ -8,7 +8,7 @@ tableName: "BOARDS",
   createdAt: "CREATEDAT",
   updatedAt: "UPDATEDAT",
 })
-export default class Boards extends Model<InferAttributes<Boards>, InferAttributes<Boards>> {
+export default class Boards extends Model<InferAttributes<Boards>, InferCreationAttributes<Boards>> {
     @Column({
         type: DataType.UUID,
         defaultValue: DataType.UUIDV4,
@@ -23,6 +23,30 @@ export default class Boards extends Model<InferAttributes<Boards>, InferAttribut
         field: "NAME",
     })
     declare name: string;
+
+    @Column({
+        type: DataType.UUID,
+        allowNull: true,
+        field: "USERID",
+    })
+    declare userId: CreationOptional<string | null>;
+
+    @Column({
+        type: DataType.DATE,
+        allowNull: true,
+        field: "DELETEDAT",
+    })
+    declare deletedAt: CreationOptional<Date | null>;
+
+    @Column({
+        type: DataType.DATE,
+        allowNull: true,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+        field: "LASTOPENEDAT",
+    })
+    declare lastOpenedAt: CreationOptional<Date | null>;
+
+
     @HasMany(() => NOTES, {
         foreignKey: "boardId",
         sourceKey: "id",

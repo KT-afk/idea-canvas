@@ -1,53 +1,82 @@
 import type { Note } from "../types/types";
 
+const API_URL = import.meta.env.VITE_API_URL || "";
+
 // ✅ Fetch all notes
-export async function fetchNotes() {
-  const res = await fetch("/api/notes");
+export async function fetchNotes(): Promise<Note[]> {
+  const res = await fetch(`${API_URL}/api/notes`);
   if (!res.ok) throw new Error("Failed to fetch notes");
   const data = await res.json();
-  return data.result.map((note: Note) => ({
+  return data.data.map((note: Note) => ({
       ...note,
-      x: Number(note.x),
-      y: Number(note.y),
-      width: Number(note.width),
-      height: Number(note.height),
+      positionX: Number(note.positionX),
+      positionY: Number(note.positionY),
     }
-));
+  ));
 }
 
 // ✅ Fetch notes by board
-export async function fetchNotesByBoard(boardId: number) {
-  const res = await fetch(`/api/notes/board/${boardId}`);
-  if (!res.ok) throw new Error(`Failed to fetch notes for the board ${boardId}`);
-  return res.json();
+export async function fetchNotesByBoard(boardId: string) {
+  // 🧪 DEMO MODE: Uncomment to test loading/error states
+  // await new Promise(resolve => setTimeout(resolve, 2000)); // Test LoadingState (2s delay)
+  // throw new Error("Demo error"); // Test ErrorState (simulated failure)
+  
+  const res = await fetch(`${API_URL}/api/notes/board/${boardId}`);
+  if (!res.ok) throw new Error("Failed to fetch notes");
+  const data = await res.json();
+  return data.data.map((note: Note) => ({
+      ...note,
+      positionX: Number(note.positionX),
+      positionY: Number(note.positionY),
+    }
+  ));
 }
 
 // ✅ Create a note
-export async function createNote(note: unknown) {
-  const res = await fetch("/api/notes", {
+export async function createNote(note: {
+  content: string;
+  positionX: number;
+  positionY: number;
+  type?: 'note' | 'idea' | 'plan';
+  status?: 'active' | 'archived' | 'graduated';
+  boardId?: string; // Story 3.1: Support creating note in specific board
+}): Promise<Note> {
+  const res = await fetch(`${API_URL}/api/notes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(note),
   });
   if (!res.ok) throw new Error("Failed to create note");
   const data = await res.json();
-  return data.note;
+  // Ensure positions are numbers (consistent with fetchNotes)
+  return {
+    ...data.data,
+    positionX: Number(data.data.positionX),
+    positionY: Number(data.data.positionY),
+  };
 }
 
 // ✅ Update note content or position
-export async function updateNote(id: string, payload: Partial<Pick<Note, "content" | "x" | "y" | "width" | "height" | "color" | "textColor" >>): Promise<Note> {
-  const res = await fetch(`/api/notes/${id}`, {
+// Story 2.4: boardId added to support moving a note to a different board
+export async function updateNote(id: string, payload: Partial<Pick<Note, "content" | "positionX" | "positionY" | "backgroundColor" | "textColor" | "type" | "status" | "boardId">>): Promise<Note> {
+  const res = await fetch(`${API_URL}/api/notes/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("Failed to update note");
-  return res.json();
+  const data = await res.json();
+  // Ensure positions are numbers (consistent with fetchNotes and createNote)
+  return {
+    ...data.data,
+    positionX: Number(data.data.positionX),
+    positionY: Number(data.data.positionY),
+  };
 }
 
 // ✅ Delete note
 export async function deleteNote(id: string): Promise<void> {
-  const res = await fetch(`/api/notes/${id}`, {
+  const res = await fetch(`${API_URL}/api/notes/${id}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
   });

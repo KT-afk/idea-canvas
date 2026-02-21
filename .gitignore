@@ -1,6 +1,25 @@
 .env
 node_modules/
-
-dist/**/*
+dist/
 
 **/.env
+
+_bmad/
+_bmad-output/
+.agent/
+.opencode/
+.claude/
+.cursor/
+.augment/
+.clinerules/
+.crush/
+.gemini/
+.github/
+.iflow/
+.kilocodemodes
+.kiro/
+.qwen/
+.roo/
+.rovodev/
+.trae/
+.windsurf/
