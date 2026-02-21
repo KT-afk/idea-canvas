@@ -12,7 +12,8 @@ export const usePreferences = (userId?: string) => {
   const { data: preferences, isLoading, error } = useQuery({
     queryKey,
     queryFn: () => preferencesService.getPreferences(userId),
-    staleTime: Infinity, // Preferences don't change often
+    staleTime: 5 * 60 * 1000, // 5 minutes — preferences are stable but should eventually sync
+    enabled: !!userId, // Don't query with an undefined userId cache key
   });
 
   const setDefaultBoardMutation = useMutation({
@@ -62,7 +63,8 @@ export const usePreferences = (userId?: string) => {
       queryClient.setQueryData(queryKey, context?.previous);
       toast.warning('Theme saved locally — could not sync to server');
     },
-    onSuccess: () => {
+    onSettled: () => {
+      // Invalidate after either success or error to sync server state
       queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -89,8 +91,8 @@ export const usePreferences = (userId?: string) => {
       // Story 7.4 AC: On save failure, preference still works locally with warning toast
       toast.warning('Resurfacing preference saved locally — could not sync to server');
     },
-    onSuccess: () => {
-      // Invalidate to sync server state
+    onSettled: () => {
+      // Invalidate after either success or error to sync server state
       queryClient.invalidateQueries({ queryKey });
     },
   });

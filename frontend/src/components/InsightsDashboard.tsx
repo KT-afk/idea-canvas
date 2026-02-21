@@ -7,7 +7,8 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Lightbulb, ClipboardList, Archive, GitBranch, Repeat2, GraduationCap } from 'lucide-react';
+import type { ElementType } from 'react';
+import { BarChart3, Lightbulb, ClipboardList, Archive, GitBranch, Repeat2, GraduationCap, RefreshCw } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,7 @@ interface InsightsDashboardProps {
 }
 
 interface StatCardProps {
-  icon: React.ElementType;
+  icon: ElementType;
   label: string;
   value: number | string;
   sub?: string;
@@ -51,7 +52,7 @@ function LifecycleBar({ data }: { data: AnalyticsData }) {
 
   const activeW = Math.round((data.activeIdeas / total) * 100);
   const archivedW = Math.round((data.archivedIdeas / total) * 100);
-  const graduatedW = 100 - activeW - archivedW;
+  const graduatedW = Math.max(0, 100 - activeW - archivedW);
 
   return (
     <div className="space-y-2">
@@ -101,11 +102,12 @@ function EmptyInsights() {
 }
 
 export function InsightsDashboard({ open, onOpenChange }: InsightsDashboardProps) {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['analytics'],
     queryFn: fetchAnalytics,
     enabled: open, // Only fetch when dashboard is open
-    staleTime: 30_000, // 30s cache — analytics don't need to be live
+    staleTime: 0, // Always refetch when reopened
+    refetchOnMount: 'always',
   });
 
   const isEmpty = data && data.totalItems === 0;
@@ -130,8 +132,15 @@ export function InsightsDashboard({ open, onOpenChange }: InsightsDashboardProps
         )}
 
         {isError && (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-sm text-destructive">Failed to load insights. Try again later.</div>
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <div className="text-sm text-destructive">Failed to load insights.</div>
+            <button
+              onClick={() => refetch()}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Try again
+            </button>
           </div>
         )}
 

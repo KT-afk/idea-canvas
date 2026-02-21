@@ -59,7 +59,25 @@ function calculateJaccardSimilarity(wordsA: string[], wordsB: string[]): number 
 }
 
 /**
- * Find common keywords between two cards
+ * Build a human-readable reason string from common keywords.
+ * Used by both suggestConnectionsKeywordBased and suggestConnectionsForCard.
+ * Note: the two callers previously had divergent implementations — this
+ * single helper is the canonical version (includes the '...' suffix for 4+
+ * keywords, which the per-card version was missing).
+ */
+function buildReason(commonWords: string[]): string {
+  if (commonWords.length === 1) {
+    return `Both mention "${commonWords[0]}"`;
+  } else if (commonWords.length === 2) {
+    return `Both mention "${commonWords[0]}" and "${commonWords[1]}"`;
+  } else if (commonWords.length > 2) {
+    return `${commonWords.length} shared keywords: ${commonWords.slice(0, 3).join(', ')}${commonWords.length > 3 ? '...' : ''}`;
+  }
+  return 'Similar content';
+}
+
+/**
+ * Find common keywords between two keyword arrays
  */
 function findCommonKeywords(wordsA: string[], wordsB: string[]): string[] {
   const setA = new Set(wordsA);
@@ -67,8 +85,7 @@ function findCommonKeywords(wordsA: string[], wordsB: string[]): string[] {
   return [...setA].filter(x => setB.has(x));
 }
 
-/**
- * Analyze cards on a board and suggest connections
+
  * Story 6.5: Uses AI (OpenAI GPT) when available
  * Story 6.2: Falls back to keyword matching with Jaccard similarity
  * Filters out existing connections
@@ -171,57 +188,54 @@ async function suggestConnectionsKeywordBased(
   minConfidence: number
 ): Promise<ConnectionSuggestion[]> {
   const suggestions: ConnectionSuggestion[] = [];
-  
+
+  // Performance guard: cap at 100 cards to keep O(n²) under control
+  const MAX_CARDS = 100;
+  const cappedCards = cards.length > MAX_CARDS ? cards.slice(0, MAX_CARDS) : cards;
+  if (cards.length > MAX_CARDS) {
+    console.warn(`[Keyword] Board has ${cards.length} cards; truncating to ${MAX_CARDS} for keyword matching performance`);
+  }
+
+  // Pre-compute keyword arrays to avoid redundant work in the inner loop
+  const keywordCache = cappedCards.map(c => extractKeywords(c.content));
+
   // Compare each pair of cards
-  for (let i = 0; i < cards.length; i++) {
-    for (let j = i + 1; j < cards.length; j++) {
-      const cardA = cards[i];
-      const cardB = cards[j];
-      
+  for (let i = 0; i < cappedCards.length; i++) {
+    for (let j = i + 1; j < cappedCards.length; j++) {
+      const cardA = cappedCards[i];
+      const cardB = cappedCards[j];
+
       // Skip if connection already exists
       const pairKey = `${cardA.id}-${cardB.id}`;
       if (existingPairs.has(pairKey)) {
         continue;
       }
-      
-      // Extract keywords
-      const wordsA = extractKeywords(cardA.content);
-      const wordsB = extractKeywords(cardB.content);
-      
+
+      const wordsA = keywordCache[i];
+      const wordsB = keywordCache[j];
+
       // Skip if either card has very few keywords
       if (wordsA.length < 2 || wordsB.length < 2) continue;
-      
+
       // Calculate similarity
       const similarity = calculateJaccardSimilarity(wordsA, wordsB);
-      
+
       // Only suggest if above threshold
       if (similarity >= minConfidence) {
         const commonWords = findCommonKeywords(wordsA, wordsB);
-        
-        // Generate reason
-        let reason = '';
-        if (commonWords.length === 1) {
-          reason = `Both mention "${commonWords[0]}"`;
-        } else if (commonWords.length === 2) {
-          reason = `Both mention "${commonWords[0]}" and "${commonWords[1]}"`;
-        } else if (commonWords.length > 2) {
-          reason = `${commonWords.length} shared keywords: ${commonWords.slice(0, 3).join(', ')}${commonWords.length > 3 ? '...' : ''}`;
-        } else {
-          reason = 'Similar content';
-        }
-        
+
         suggestions.push({
           sourceCardId: cardA.id,
           targetCardId: cardB.id,
           confidence: Math.round(similarity * 100) / 100, // Round to 2 decimals
-          reason,
+          reason: buildReason(commonWords),
           sourceCard: cardA,
           targetCard: cardB,
         });
       }
     }
   }
-  
+
   return suggestions;
 }
 
@@ -250,7 +264,7 @@ export async function suggestConnectionsForCard(
       boardId: targetCard.boardId,
       status: 'active',
       type: { [Op.in]: ['note', 'idea'] }, // Story 8.4: exclude plans
-      id: { [require('sequelize').Op.ne]: cardId } // Exclude the target card
+      id: { [Op.ne]: cardId } // Exclude the target card
     },
     attributes: ['id', 'content', 'type'],
   });
@@ -270,23 +284,12 @@ export async function suggestConnectionsForCard(
     
     if (similarity >= minConfidence) {
       const commonWords = findCommonKeywords(targetWords, cardWords);
-      
-      let reason = '';
-      if (commonWords.length === 1) {
-        reason = `Both mention "${commonWords[0]}"`;
-      } else if (commonWords.length === 2) {
-        reason = `Both mention "${commonWords[0]}" and "${commonWords[1]}"`;
-      } else if (commonWords.length > 2) {
-        reason = `${commonWords.length} shared keywords: ${commonWords.slice(0, 3).join(', ')}`;
-      } else {
-        reason = 'Similar content';
-      }
-      
+
       suggestions.push({
         sourceCardId: cardId,
         targetCardId: card.id,
         confidence: Math.round(similarity * 100) / 100,
-        reason,
+        reason: buildReason(commonWords),
         sourceCard: targetCard,
         targetCard: card,
       });

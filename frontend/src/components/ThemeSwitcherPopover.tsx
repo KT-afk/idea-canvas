@@ -62,7 +62,7 @@ const THEME_META: Record<
 
 interface ThemeSwitcherPopoverProps {
   currentTheme: Theme;
-  onThemeChange: (theme: string) => void;
+  onThemeChange: (theme: Theme) => void;
   isUpdating?: boolean;
 }
 
@@ -77,7 +77,7 @@ export function ThemeSwitcherPopover({
         <button
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors hover:bg-accent text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           aria-label="Change theme"
-          aria-haspopup="dialog"
+          aria-haspopup="true"
         >
           <Palette className={`w-4 h-4 ${isUpdating ? 'animate-pulse' : ''}`} />
           <span className="hidden sm:inline">Theme</span>

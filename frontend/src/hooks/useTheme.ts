@@ -26,8 +26,10 @@ function getSystemDefault(): Theme {
     : SYSTEM_LIGHT_DEFAULT;
 }
 
+const THEME_SET = new Set<string>(ALL_THEMES);
+
 function isValidTheme(value: string | undefined): value is Theme {
-  return ALL_THEMES.includes(value as Theme);
+  return value !== undefined && THEME_SET.has(value);
 }
 
 function applyTheme(theme: Theme) {
@@ -53,9 +55,12 @@ export function useTheme(): UseThemeResult {
     ? savedTheme
     : getSystemDefault();
 
-  // Apply CSS class to <html> whenever theme changes
+  // Apply CSS class to <html> whenever theme changes; remove all theme classes on unmount
   useEffect(() => {
     applyTheme(currentTheme);
+    return () => {
+      ALL_THEMES.forEach((t) => document.documentElement.classList.remove(t));
+    };
   }, [currentTheme]);
 
   return { currentTheme, setTheme, isUpdatingTheme };

@@ -56,6 +56,15 @@ export interface CardProps {
   onMove?: (id: string, targetBoardId: string, targetBoardName: string) => void;
 }
 
+// Story 1.5: Toggle type - cycles through note → idea → plan → note
+// Defined outside component: pure function of type, no closure needed
+function getNextType(type: 'note' | 'idea' | 'plan'): 'note' | 'idea' | 'plan' {
+  const typeOrder: Array<'note' | 'idea' | 'plan'> = ['note', 'idea', 'plan'];
+  const currentIndex = typeOrder.indexOf(type);
+  const nextIndex = (currentIndex + 1) % typeOrder.length;
+  return typeOrder[nextIndex];
+}
+
 // Story 1.6: Base Card component - handles all shared logic
 export function Card({
   id,
@@ -272,16 +281,9 @@ export function Card({
     }, 500);
   }, [id, onDragEndSave]);
 
-  // Story 1.5: Toggle type - cycles through note → idea → plan → note
-  const getNextType = (): 'note' | 'idea' | 'plan' => {
-    const typeOrder: Array<'note' | 'idea' | 'plan'> = ['note', 'idea', 'plan'];
-    const currentIndex = typeOrder.indexOf(type);
-    const nextIndex = (currentIndex + 1) % typeOrder.length;
-    return typeOrder[nextIndex];
-  };
-
+  // Story 1.5: Toggle type handler
   const handleTypeToggle = () => {
-    const newType = getNextType();
+    const newType = getNextType(type);
     onTypeChange(newType);
   };
 
@@ -379,7 +381,7 @@ export function Card({
     <motion.div
       ref={noteRef}
       role="region"
-      aria-label={`Note: ${editableText.substring(0, 30)}${editableText.length > 30 ? '...' : ''}`}
+      aria-label={`${type.charAt(0).toUpperCase() + type.slice(1)}: ${editableText.substring(0, 30)}${editableText.length > 30 ? '...' : ''}`}
       tabIndex={0}
       onKeyDown={handleCardKeyDown}
       initial={isNew ? { scale: 0, opacity: 0 } : false}
@@ -515,7 +517,7 @@ export function Card({
         <button
           onClick={handleTypeToggle}
           className="flex items-center gap-1 text-xs bg-black/5 hover:bg-black/10 px-2 py-1 rounded-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
-          aria-label={`Type: ${type}. Click to toggle to ${getNextType()}`}
+          aria-label={`Type: ${type}. Click to toggle to ${getNextType(type)}`}
         >
           <TypeIcon className="w-3 h-3" />
           <span className="capitalize">{type}</span>

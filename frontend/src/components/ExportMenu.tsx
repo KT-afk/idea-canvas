@@ -50,7 +50,8 @@ function triggerDownload(filename: string, content: string, mimeType: string) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Defer revocation so the browser has time to initiate the download
+  setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 
 function buildMarkdown(note: Note, activity: ActivityLogEntry[], nextTime: NextTimeNote[]): string {
@@ -162,6 +163,7 @@ export function ExportMenu({ note }: ExportMenuProps) {
         triggerDownload(`${filename}.json`, content, 'application/json');
       }
     } catch (_err) {
+      console.error('Export failed:', _err);
       toast.error('Export failed. Please try again.');
     } finally {
       setIsExporting(false);

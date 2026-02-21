@@ -43,16 +43,18 @@ analyticsRouter.get('/analytics', async (_req, res) => {
     const getCount = (type: string, status: string) =>
       countMap[type]?.[status] ?? 0;
 
+    // Helper: sum across all statuses for a given type
+    const totalForType = (type: string) =>
+      ['active', 'archived', 'graduated'].reduce((s, status) => s + getCount(type, status), 0);
+
     const totalItems = Object.values(countMap).reduce(
       (sum, statuses) => sum + Object.values(statuses).reduce((s, n) => s + n, 0),
       0
     );
 
-    const totalIdeas =
-      getCount('idea', 'active') + getCount('idea', 'archived') + getCount('idea', 'graduated');
-
-    const totalPlans =
-      getCount('plan', 'active') + getCount('plan', 'archived') + getCount('plan', 'graduated');
+    const totalNotes = totalForType('note');
+    const totalIdeas = totalForType('idea');
+    const totalPlans = totalForType('plan');
 
     const activeIdeas = getCount('idea', 'active');
     const archivedIdeas = getCount('idea', 'archived');
@@ -62,27 +64,13 @@ analyticsRouter.get('/analytics', async (_req, res) => {
     const totalArchivedAll =
       getCount('note', 'archived') + getCount('idea', 'archived') + getCount('plan', 'archived');
 
-    // --- Activity log stats ---
-    const graduationEvents = await ActivityLog.count({
-      where: { eventType: 'graduated' },
-    });
-
-    const resurfaceEvents = await ActivityLog.count({
-      where: { eventType: 'resurfaced' },
-    });
-
-    // Count ideas that were acted-on after resurfacing (boolean per note)
-    const actedOnCount = await Notes.count({
-      where: {
-        actedOnResurface: true,
-        type: 'idea',
-      },
-    });
-
-    // --- Connection stats ---
-    // P7-I2 fix: removed connectedNotes (only counted source side, misleading).
-    // totalConnections is accurate and sufficient.
-    const totalConnections = await Connections.count();
+    // --- Activity log + connection stats (run in parallel — independent queries) ---
+    const [graduationEvents, resurfaceEvents, actedOnCount, totalConnections] = await Promise.all([
+      ActivityLog.count({ where: { eventType: 'graduated' } }),
+      ActivityLog.count({ where: { eventType: 'resurfaced' } }),
+      Notes.count({ where: { actedOnResurface: true, type: 'idea' } }),
+      Connections.count(),
+    ]);
 
     // --- Resurfacing rate ---
     // P7-I4 fix: removed the actedOnCount/resurfaceEvents rate computation.

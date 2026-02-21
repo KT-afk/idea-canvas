@@ -32,9 +32,12 @@ export interface AnalyticsData {
   actedOnCount: number;
 }
 
-export async function fetchAnalytics(): Promise<AnalyticsData> {
-  const res = await fetch(`${API_URL}/api/analytics`);
+export async function fetchAnalytics(signal?: AbortSignal): Promise<AnalyticsData> {
+  const res = await fetch(`${API_URL}/api/analytics`, { signal });
   if (!res.ok) throw new Error('Failed to fetch analytics');
   const json = await res.json();
+  if (!json || typeof json.data !== 'object' || json.data === null) {
+    throw new Error('Unexpected analytics response shape');
+  }
   return json.data as AnalyticsData;
 }

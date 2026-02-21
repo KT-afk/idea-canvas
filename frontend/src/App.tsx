@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { AutosaveIndicator } from "./components/AutosaveIndicator"; // Story 1.8
 import { BoardCanvas, type BoardCanvasHandle } from "./components/BoardCanvas";
@@ -77,11 +78,15 @@ function App() {
   const { createBoard } = useBoardMutations(); // Story 3.1
   const { order, bringToFront } = useZIndexManager(notes);
 
+  // Guard against infinite retry loop: only attempt board creation once per mount.
+  const boardCreationAttempted = useRef(false);
+
   // Story 3.4: Set default board when boards and preferences are loaded
   // Auto-create default board if none exist
   useEffect(() => {
-    if (boards.length === 0 && !createBoard.isPending) {
-      // Create a default "My Board" on first load
+    if (boards.length === 0 && !createBoard.isPending && !boardCreationAttempted.current) {
+      // Create a default "My Board" on first load — guarded so a failure doesn't retry infinitely
+      boardCreationAttempted.current = true;
       createBoard.mutate("My Board", {
         onSuccess: (newBoard) => {
           setCurrentBoardId(newBoard.id);
@@ -270,31 +275,44 @@ function App() {
     moveNote.mutate({ id, sourceBoardId: currentBoardId, targetBoardId, targetBoardName, note });
   }, [moveNote, currentBoardId, notes]);
 
-  // Zoom control handlers
-  const handleZoomIn = () => {
+  // Zoom control handlers — memoized so CanvasControls memo is not broken
+  const handleZoomIn = useCallback(() => {
     setZoom((prev) => Math.min(2, prev + 0.1));
-  };
+  }, []);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     setZoom((prev) => Math.max(0.25, prev - 0.1));
-  };
+  }, []);
 
-  const handleResetHome = () => {
+  const handleResetHome = useCallback(() => {
     canvasRef.current?.resetToHome();
-  };
+  }, []);
 
   // Story 1.9: Handle "Fit to Content"
-  const handleFitToContent = () => {
+  const handleFitToContent = useCallback(() => {
     canvasRef.current?.fitToContent();
-  };
+  }, []);
+
+  // Track window size so visibleNotes re-computes on resize
+  const [windowSize, setWindowSize] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1920,
+    height: typeof window !== 'undefined' ? window.innerHeight : 1080,
+  });
+
+  useEffect(() => {
+    const handleResize = () =>
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Virtualization: Only render visible cards + buffer zone
   const visibleNotes = useMemo(() => {
     // Issue #6 fix: Larger buffer accounting for card size and zoom
     const CARD_WIDTH = 192; // w-48 = 12rem = 192px
     const buffer = Math.max(500, CARD_WIDTH * 2);
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
+    const windowWidth = windowSize.width;
+    const windowHeight = windowSize.height;
 
     // Use panPosition state instead of ref
     const panX = panPosition.x;
@@ -323,7 +341,7 @@ function App() {
 
       return statusMatch && inViewport;
     });
-  }, [notes, zoom, panPosition, showArchived]);
+  }, [notes, zoom, panPosition, showArchived, windowSize]);
 
   // Handle loading and error states after hooks
   if (isLoading) {
@@ -341,6 +359,24 @@ function App() {
     );
   }
 
+  // Shared toolbar — extracted to avoid duplicate JSX with identical props
+  const toolbar: ReactNode = (
+    <Toolbar
+      boards={boards}
+      currentBoardId={currentBoardId}
+      onBoardChange={setCurrentBoardId}
+      onSearch={() => setIsCommandPaletteOpen(true)}
+      onFindConnections={() => setIsConnectionsPanelOpen(true)}
+      resurfaceFrequency={preferences?.resurfaceFrequency}
+      onResurfaceFrequencyChange={setResurfaceFrequency}
+      isUpdatingFrequency={isUpdatingFrequency}
+      currentTheme={currentTheme}
+      onThemeChange={setTheme}
+      isUpdatingTheme={isUpdatingTheme}
+      onInsights={() => setIsInsightsDashboardOpen(true)}
+    />
+  );
+
   // Issue #1 fix: Show empty state only if no active notes AND no pending creation
   // BUG FIX: Don't show empty state if we don't have a valid board yet (board creation pending)
   const hasActiveNotes = notes.some((note: Note) => (note.status ?? 'active') !== 'archived');
@@ -353,20 +389,7 @@ function App() {
     return (
       <div className="h-screen w-screen bg-background flex flex-col">
         {/* Toolbar even in empty state */}
-        <Toolbar
-          boards={boards}
-          currentBoardId={currentBoardId}
-          onBoardChange={setCurrentBoardId}
-          onSearch={() => setIsCommandPaletteOpen(true)}
-          onFindConnections={() => setIsConnectionsPanelOpen(true)}
-          resurfaceFrequency={preferences?.resurfaceFrequency}
-          onResurfaceFrequencyChange={setResurfaceFrequency}
-          isUpdatingFrequency={isUpdatingFrequency}
-          currentTheme={currentTheme}
-          onThemeChange={setTheme}
-          isUpdatingTheme={isUpdatingTheme}
-          onInsights={() => setIsInsightsDashboardOpen(true)}
-        />
+        {toolbar}
         <div className="flex-1">
           <EmptyState onAdd={() => handleAddNote('note')} />
         </div>
@@ -376,20 +399,7 @@ function App() {
     return (
       <>
         {/* Professional Toolbar */}
-        <Toolbar
-          boards={boards}
-          currentBoardId={currentBoardId}
-          onBoardChange={setCurrentBoardId}
-          onSearch={() => setIsCommandPaletteOpen(true)}
-          onFindConnections={() => setIsConnectionsPanelOpen(true)}
-          resurfaceFrequency={preferences?.resurfaceFrequency}
-          onResurfaceFrequencyChange={setResurfaceFrequency}
-          isUpdatingFrequency={isUpdatingFrequency}
-          currentTheme={currentTheme}
-          onThemeChange={setTheme}
-          isUpdatingTheme={isUpdatingTheme}
-          onInsights={() => setIsInsightsDashboardOpen(true)}
-        />
+        {toolbar}
         
         <BoardCanvas
           ref={canvasRef}
